@@ -210,10 +210,12 @@ Open http://localhost:3000.
    UPDATE users SET law_firm_id = (SELECT id FROM law_firms WHERE slug = 'my-firm') WHERE email = 'you@example.com';
    ```
 
-### 7. Choose the AI provider (once)
+### 7. Check the AI provider (optional)
 
-Open http://localhost:3000/settings and pick OpenAI or Anthropic (whichever key you set), plus the model and
-voice. These settings are stored in the database, so each local database needs them set once.
+If you set only one AI key, Maya uses that provider automatically. If you set both, it defaults to
+Anthropic; set `LLM_PROVIDER=openai` in `.env.local` to change that. To change the provider, model or voice,
+open http://localhost:3000/settings. Choices made there are saved in your database and override
+`.env.local`.
 
 ## Try the main flows
 

@@ -18,7 +18,13 @@ export type ResolvedSettings = {
 // DB row wins; .env.local supplies defaults until settings are saved.
 export async function getSettings(): Promise<ResolvedSettings> {
   const [row] = await db.select().from(appSettings).where(eq(appSettings.id, 1));
-  const envProvider = process.env.LLM_PROVIDER === "openai" ? "openai" : "anthropic";
+  // Without LLM_PROVIDER, pick the provider whose key is set, so a fresh install with only an OpenAI key works.
+  const envProvider: Provider =
+    process.env.LLM_PROVIDER === "openai" || process.env.LLM_PROVIDER === "anthropic"
+      ? process.env.LLM_PROVIDER
+      : process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY
+        ? "openai"
+        : "anthropic";
   return {
     provider: row?.llmProvider ?? envProvider,
     openaiModel: row?.openaiModel || process.env.OPENAI_MODEL || DEFAULT_OPENAI_MODEL,
