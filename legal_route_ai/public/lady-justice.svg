@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 400 660" role="img" aria-labelledby="t">
+  <title id="t">Bronze statue of Lady Justice, blindfolded, holding raised scales and a lowered sword, under a spotlight</title>
+  <defs>
+    <!-- Spotlight from above/behind -->
+    <radialGradient id="spot" cx="0.5" cy="0.3" r="0.5">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.30"/>
+      <stop offset="0.45" stop-color="#c9ccd3" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#c9ccd3" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Dark metal with rim light on the right -->
+    <linearGradient id="metal" gradientUnits="userSpaceOnUse" x1="120" y1="0" x2="330" y2="0">
+      <stop offset="0" stop-color="#16181d"/>
+      <stop offset="0.4" stop-color="#3e434b"/>
+      <stop offset="0.66" stop-color="#b9bdc5"/>
+      <stop offset="0.78" stop-color="#7c818a"/>
+      <stop offset="1" stop-color="#1d2026"/>
+    </linearGradient>
+    <linearGradient id="metalV" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d2d5db"/>
+      <stop offset="1" stop-color="#3a3e46"/>
+    </linearGradient>
+    <linearGradient id="blade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5b6068"/>
+      <stop offset="0.5" stop-color="#e3e5e9"/>
+      <stop offset="1" stop-color="#4a4e56"/>
+    </linearGradient>
+    <linearGradient id="floor" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="fadeGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="fade" maskUnits="userSpaceOnUse" x="0" y="566" width="400" height="94">
+      <rect x="0" y="566" width="400" height="94" fill="url(#fadeGrad)"/>
+    </mask>
+  </defs>
+
+  <!-- spotlight -->
+  <ellipse cx="205" cy="290" rx="190" ry="280" fill="url(#spot)"/>
+
+  <g id="statue">
+    <!-- rocky base and plinth -->
+    <path d="M126 530 Q148 512 174 521 Q198 509 224 519 Q254 509 282 527 L286 550 L122 550 Z" fill="url(#metal)"/>
+    <path d="M150 522 Q160 516 172 524 M232 518 Q246 514 258 522" fill="none" stroke="#0b0d11" stroke-opacity="0.5" stroke-width="2"/>
+    <rect x="112" y="548" width="184" height="18" rx="2" fill="url(#metal)"/>
+    <rect x="112" y="548" width="184" height="3" fill="#ffffff" fill-opacity="0.18"/>
+
+    <!-- lowered arm (viewer's left) -->
+    <path d="M171 168 Q152 214 151 262" fill="none" stroke="url(#metal)" stroke-width="13" stroke-linecap="round"/>
+
+    <!-- robe -->
+    <path d="M167 160 Q197 149 229 160 L233 230 Q238 300 251 380 Q262 452 270 522 L138 522 Q147 452 156 380 Q165 300 166 230 Z" fill="url(#metal)"/>
+    <!-- drapery: sash, belt and folds -->
+    <g fill="none" stroke-linecap="round">
+      <path d="M169 166 Q202 196 233 236" stroke="#e1e4ea" stroke-opacity="0.35" stroke-width="3"/>
+      <path d="M166 230 Q200 242 233 230" stroke="#0b0d11" stroke-opacity="0.55" stroke-width="3"/>
+      <path d="M178 246 Q170 380 150 518" stroke="#0b0d11" stroke-opacity="0.45" stroke-width="2.5"/>
+      <path d="M192 246 Q190 390 178 518" stroke="#e1e4ea" stroke-opacity="0.18" stroke-width="2"/>
+      <path d="M204 248 Q208 390 204 518" stroke="#0b0d11" stroke-opacity="0.4" stroke-width="2.5"/>
+      <path d="M216 246 Q228 390 234 518" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2"/>
+      <path d="M226 250 Q244 390 258 518" stroke="#0b0d11" stroke-opacity="0.35" stroke-width="2"/>
+      <path d="M196 300 Q214 330 226 380 Q236 430 230 470" stroke="#ffffff" stroke-opacity="0.18" stroke-width="5"/>
+      <path d="M176 180 Q196 172 220 178" stroke="#0b0d11" stroke-opacity="0.35" stroke-width="2"/>
+    </g>
+
+    <!-- raised arm (viewer's right) -->
+    <path d="M224 166 Q248 136 257 82" fill="none" stroke="url(#metal)" stroke-width="13" stroke-linecap="round"/>
+    <circle cx="257" cy="76" r="8" fill="url(#metalV)"/>
+
+    <!-- neck and head -->
+    <rect x="189" y="134" width="14" height="22" rx="5" fill="url(#metal)"/>
+    <circle cx="196" cy="120" r="19" fill="url(#metal)"/>
+    <path d="M176 120 Q176 98 196 98 Q216 99 215 120 Q207 107 196 107 Q184 107 176 120 Z" fill="#2a2d34"/>
+    <circle cx="206" cy="96" r="8" fill="#2a2d34"/>
+    <rect x="176" y="114" width="39" height="7" rx="3" fill="#0b0d11"/>
+    <path d="M212 117 Q223 124 223 141 L219 141 Q217 129 208 121 Z" fill="#0b0d11"/>
+
+    <!-- sword (held low, point toward the base) -->
+    <polygon points="159.9,284 152.1,286 212,512" fill="url(#blade)"/>
+    <line x1="141.4" y1="283.3" x2="168.6" y2="276.7" stroke="url(#metalV)" stroke-width="5" stroke-linecap="round"/>
+    <line x1="155" y1="280" x2="150.7" y2="262.5" stroke="#2a2d34" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="149.5" cy="256" r="4.5" fill="url(#metalV)"/>
+    <circle cx="152" cy="266" r="8" fill="url(#metalV)"/>
+
+    <!-- scales: tall staff with beam below the hand -->
+    <g stroke-linecap="round" fill="none">
+      <line x1="257" y1="44" x2="257" y2="132" stroke="#b9bdc5" stroke-width="4"/>
+      <path d="M232 132 Q244 126 257 132 Q270 126 282 132 L306 132" stroke="#c9ccd3" stroke-width="3.5"/>
+      <path d="M232 132 Q226 126 230 122 M306 132 Q312 126 308 122" stroke="#c9ccd3" stroke-width="2"/>
+      <g stroke="#aeb2ba" stroke-width="1.4" stroke-dasharray="3 2">
+        <line x1="234" y1="134" x2="222" y2="210"/>
+        <line x1="234" y1="134" x2="250" y2="210"/>
+        <line x1="304" y1="134" x2="292" y2="210"/>
+        <line x1="304" y1="134" x2="320" y2="210"/>
+      </g>
+    </g>
+    <circle cx="257" cy="40" r="5" fill="url(#metalV)"/>
+    <path d="M218 210 Q236 222 254 210 Z" fill="url(#metalV)"/>
+    <path d="M288 210 Q306 222 324 210 Z" fill="url(#metalV)"/>
+  </g>
+
+  <!-- reflective floor -->
+  <rect x="0" y="565" width="400" height="1.5" fill="url(#floor)"/>
+  <g mask="url(#fade)">
+    <use href="#statue" xlink:href="#statue" transform="translate(0 1132) scale(1 -1)"/>
+  </g>
+</svg>

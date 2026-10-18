@@ -10,7 +10,11 @@ frontend/      React application powered by Vite
 backend/       Express API and PostgreSQL connection pool
 agents/        TypeScript automation runtime and starter agent
 compose.yaml   Local PostgreSQL with a persistent named volume
+legal_route_ai/  Phase 1 app: standalone Next.js (attorney screens, Maya, voice intake)
 ```
+
+> **Phase 1 app:** `legal_route_ai/` is a self-contained Next.js app with its own `package.json`. It is not
+> part of the npm workspace above. To run it, follow [legal_route_ai/README.md](legal_route_ai/README.md).
 
 This project is self-contained in `Desktop/legalroute-app`. It does not depend on
 or modify `Desktop/legalRoute`, `voice-relay`, or `voiceagentmiddleware`.
