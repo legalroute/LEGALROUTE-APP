@@ -6,6 +6,10 @@ Maya, an AI voice assistant; attorneys review intakes, manage clients and build 
 Built with Next.js 16 (App Router, TypeScript), PostgreSQL via Drizzle ORM, Tailwind CSS v4, OpenAI or
 Anthropic for the AI, and Deepgram for speech.
 
+This is the **Phase 1 app** of the LEGALROUTE-APP repository. Everything in this guide runs from this
+`legal_route_ai/` folder. The `frontend/`, `backend/` and `agents/` folders at the repo root are a separate
+scaffold with its own setup ([root README](../README.md)); you don't need them to run this app.
+
 > **Heads-up:** this is Next.js 16, which differs from older versions (for example, `src/proxy.ts` replaces
 > middleware, and `params` / `cookies()` are async). Check `node_modules/next/dist/docs/` before changing
 > framework-level code.
@@ -14,7 +18,7 @@ Anthropic for the AI, and Deepgram for speech.
 
 | Tool | Version | Notes |
 |---|---|---|
-| [Node.js](https://nodejs.org/) | 20.9 or newer (developed on 24) | Includes `npm` |
+| [Node.js](https://nodejs.org/) | 22.12 or newer (24 recommended; `.nvmrc` at the repo root) | Includes `npm` |
 | [PostgreSQL](https://www.postgresql.org/download/) | 14 or newer (developed on 18) | Running locally on port 5432 |
 | [Git](https://git-scm.com/downloads) | any | |
 | Chrome or Edge | recent | For voice intakes (microphone access) |
@@ -89,7 +93,7 @@ PostgreSQL starts automatically as a service. If it isn't running, use `sudo sys
 In a **new** terminal window:
 
 ```bash
-node -v        # v20.9 or higher
+node -v        # v22.12 or higher
 npm -v
 git --version
 psql --version # Windows: & "C:\Program Files\PostgreSQL\18\bin\psql.exe" --version
@@ -308,7 +312,7 @@ testing with real people.
 | `password authentication failed for user "postgres"` | Fix the password in `DATABASE_URL` |
 | `database "legal_ai" does not exist` | Run step 2 |
 | `relation "..." does not exist` | Run `npm run db:migrate` (also needed after pulling new migrations) |
-| Port 3000 in use | `npm run dev -- -p 3001` |
+| Port 3000 in use | `npm run dev -- -p 3002` (3001 is the scaffold API) |
 | Maya replies with an error | Check the AI key in `.env.local` matches the provider chosen on `/settings` |
 | Mic doesn't start | Use `localhost` or an `https://` tunnel, and allow microphone access in the browser |
 | No voice / transcription | Check `DEEPGRAM_API_KEY` |
