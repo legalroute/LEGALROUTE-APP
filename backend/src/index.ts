@@ -1,6 +1,7 @@
 import express from 'express';
-import { env } from './config.js';
-import { pool } from './db.js';
+import { env } from './config.ts';
+import { sql } from 'drizzle-orm';
+import { db, closeDatabase } from './db/index.ts';
 
 const app = express();
 app.disable('x-powered-by');
@@ -8,7 +9,7 @@ app.use(express.json({ limit: '1mb' }));
 
 app.get('/api/health', async (_request, response) => {
   try {
-    await pool.query('SELECT 1');
+    await db.execute(sql`SELECT 1`);
     response.json({ status: 'ok', database: 'connected' });
   } catch {
     response.status(503).json({ status: 'unavailable', database: 'disconnected' });
@@ -32,7 +33,7 @@ function shutdown() {
   const timeout = setTimeout(() => process.exit(1), 10000);
   timeout.unref();
   server.close(() => {
-    void pool.end().then(() => { clearTimeout(timeout); }).catch(() => { process.exitCode = 1; });
+    void closeDatabase().then(() => { clearTimeout(timeout); }).catch(() => { process.exitCode = 1; });
   });
 }
 process.on('SIGINT', shutdown);

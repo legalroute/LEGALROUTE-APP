@@ -43,6 +43,13 @@
       "when": 1792329918494,
       "tag": "0005_phase1_migrate_data",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794158642940,
+      "tag": "0006_native_appointments",
+      "breakpoints": true
     }
   ]
 }

@@ -7,18 +7,113 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "node --conditions=development --import tsx --test tests/*.test.ts",
+    "db:migrate": "drizzle-kit migrate",
+    "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio",
+    "test:postgres": "node --conditions=development --import tsx --test tests/postgres.integration.ts"
   },
   "dependencies": {
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
-    "pg": "^8.16.0"
+    "drizzle-orm": "^0.45.3",
+    "postgres": "^3.4.9",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
-    "@types/pg": "^8.15.0",
     "tsx": "^4.20.0",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "drizzle-kit": "^0.31.11",
+    "@electric-sql/pglite": "^0.5.15"
+  },
+  "exports": {
+    "./db": {
+      "types": "./src/db/index.ts",
+      "development": "./src/db/index.ts",
+      "default": "./dist/db/index.js"
+    },
+    "./db/schema": {
+      "types": "./src/db/schema.ts",
+      "development": "./src/db/schema.ts",
+      "default": "./dist/db/schema.js"
+    },
+    "./services/auth": {
+      "types": "./src/services/auth.ts",
+      "development": "./src/services/auth.ts",
+      "default": "./dist/services/auth.js"
+    },
+    "./services/calendar": {
+      "types": "./src/services/calendar.ts",
+      "development": "./src/services/calendar.ts",
+      "default": "./dist/services/calendar.js"
+    },
+    "./services/email": {
+      "types": "./src/services/email.ts",
+      "development": "./src/services/email.ts",
+      "default": "./dist/services/email.js"
+    },
+    "./services/firm": {
+      "types": "./src/services/firm.ts",
+      "development": "./src/services/firm.ts",
+      "default": "./dist/services/firm.js"
+    },
+    "./services/intake-config": {
+      "types": "./src/services/intake-config.ts",
+      "development": "./src/services/intake-config.ts",
+      "default": "./dist/services/intake-config.js"
+    },
+    "./services/maya/client-context": {
+      "types": "./src/services/maya/client-context.ts",
+      "development": "./src/services/maya/client-context.ts",
+      "default": "./dist/services/maya/client-context.js"
+    },
+    "./services/maya/history": {
+      "types": "./src/services/maya/history.ts",
+      "development": "./src/services/maya/history.ts",
+      "default": "./dist/services/maya/history.js"
+    },
+    "./services/maya/home-context": {
+      "types": "./src/services/maya/home-context.ts",
+      "development": "./src/services/maya/home-context.ts",
+      "default": "./dist/services/maya/home-context.js"
+    },
+    "./services/public-intake": {
+      "types": "./src/services/public-intake.ts",
+      "development": "./src/services/public-intake.ts",
+      "default": "./dist/services/public-intake.js"
+    },
+    "./services/scheduling/service": {
+      "types": "./src/services/scheduling/service.ts",
+      "development": "./src/services/scheduling/service.ts",
+      "default": "./dist/services/scheduling/service.js"
+    },
+    "./services/scheduling/validation": {
+      "types": "./src/services/scheduling/validation.ts",
+      "development": "./src/services/scheduling/validation.ts",
+      "default": "./dist/services/scheduling/validation.js"
+    },
+    "./services/settings": {
+      "types": "./src/services/settings.ts",
+      "development": "./src/services/settings.ts",
+      "default": "./dist/services/settings.js"
+    },
+    "./services/uploads": {
+      "types": "./src/services/uploads.ts",
+      "development": "./src/services/uploads.ts",
+      "default": "./dist/services/uploads.js"
+    },
+    "./services/voice-types": {
+      "types": "./src/services/voice-types.ts",
+      "development": "./src/services/voice-types.ts",
+      "default": "./dist/services/voice-types.js"
+    },
+    "./contracts/ai": {
+      "types": "./src/contracts/ai.ts",
+      "development": "./src/contracts/ai.ts",
+      "default": "./dist/contracts/ai.js"
+    }
   }
 }

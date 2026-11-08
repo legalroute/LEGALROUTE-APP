@@ -5,22 +5,31 @@
   "workspaces": [
     "frontend",
     "backend",
-    "agents"
+    "agents",
+    "legal_route_ai"
   ],
   "engines": {
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "concurrently -k -n api,web \"npm run dev -w backend\" \"npm run dev -w frontend\"",
-    "build": "npm run build --workspaces",
+    "dev": "npm run dev --workspace=@legalroute/web",
+    "build": "npm run build --workspace=@legalroute/frontend && npm run build --workspace=@legalroute/web",
     "typecheck": "npm run typecheck --workspaces",
-    "start": "npm run start -w backend",
+    "start": "npm run start --workspace=@legalroute/web",
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f postgres",
-    "agents:run": "npm run dev -w agents"
+    "agents:run": "npm run dev -w agents",
+    "dev:scaffold": "concurrently -k -n api,web \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "build:packages": "npm run build --workspace=@legalroute/backend && npm run build --workspace=@legalroute/agents",
+    "test": "npm run test --workspace=@legalroute/backend && npm run test --workspace=@legalroute/agents",
+    "db:migrate": "npm run db:migrate --workspace=@legalroute/backend",
+    "lint": "eslint backend/src backend/tests agents/src agents/tests legal_route_ai",
+    "start:api": "npm run start -w backend"
   },
   "devDependencies": {
-    "concurrently": "^9.2.0"
+    "concurrently": "^9.2.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.8"
   }
 }

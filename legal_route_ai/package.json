@@ -1,10 +1,10 @@
 {
-  "name": "legal_route_ai",
+  "name": "@legalroute/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
@@ -12,19 +12,21 @@
     "db:studio": "drizzle-kit studio",
     "typecheck": "next typegen && tsc --noEmit",
     "eval:intake": "tsx --conditions=react-server evals/intake-accuracy.ts",
-    "eval:voice": "tsx --conditions=react-server evals/voice-robustness.ts"
+    "eval:voice": "tsx --conditions=react-server evals/voice-robustness.ts",
+    "test:scheduling": "npm run test --workspace=@legalroute/backend",
+    "predev": "npm --prefix .. run build:packages",
+    "prebuild": "npm --prefix .. run build:packages"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.132.0",
     "drizzle-orm": "^0.45.3",
     "lucide-react": "^1.49.0",
     "next": "16.3.8",
-    "openai": "^7.30.0",
-    "postgres": "^3.4.9",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
-    "zod": "^4.6.5"
+    "zod": "^4.6.5",
+    "@legalroute/backend": "0.1.0",
+    "@legalroute/agents": "0.1.0"
   },
   "devDependencies": {
     "@next/env": "^16.3.8",

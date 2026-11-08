@@ -4,6 +4,7 @@ import type { NextConfig } from "next";
 const tunnelHosts = ["*.ngrok-free.app", "*.ngrok-free.dev", "*.ngrok.app", "*.ngrok.dev"];
 
 const nextConfig: NextConfig = {
+  transpilePackages: ["@legalroute/backend", "@legalroute/agents"],
   allowedDevOrigins: tunnelHosts,
   experimental: {
     serverActions: {

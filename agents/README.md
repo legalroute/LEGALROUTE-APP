@@ -1,48 +1,30 @@
 # LegalRoute agents
 
-TypeScript automation workspace. The starter agent runs once, reports readiness,
-and exits. Add integrations as needed; no model provider is configured.
+Owns AI behavior and provider/speech adapters. Agents receive application context
+as inputs; they do not query PostgreSQL or import Next.js.
 
 ```text
-agents/
-├── src/
-│   ├── index.ts           CLI entry point
-│   ├── agents/starter/    Runnable starter and its documentation
-│   ├── workflows/        Multi-step orchestration
-│   ├── tools/            External integrations and actions
-│   └── shared/types.ts   Agent interface and execution context
-├── tests/fixtures/       Synthetic test data
-├── .env.example
-├── package.json
-└── tsconfig.json
+src/
+  agents/
+    maya/             Attorney home, client, and intake-builder assistants
+    intake/           Legacy and template-driven voice intake behavior
+    starter/          Local runtime smoke check
+  llm/                OpenAI/Anthropic adapters and structured generation
+  tools/deepgram.ts   Speech transcription/synthesis
+  shared/             Assistant identity and starter execution interfaces
+  workflows/          Reserved for future orchestration
+  index.ts            Starter CLI
+tests/                Offline intake and provider-routing regression tests
 ```
 
-## Run
+From the root, run `npm run agents:run`, `npm run test -w agents`, or
+`npm run build -w agents` (build backend first if running package builds manually).
+Next.js still loads the existing `legal_route_ai/.env.local` AI/speech keys;
+standalone automations can use `agents/.env`. No real provider calls are made by
+the regression tests. Live AI evaluation commands remain in the web workspace
+and continue to use compatibility imports.
 
-After `npm install` at the repository root:
-
-```sh
-npm run agents:run
-npm run typecheck -w agents
-npm run build -w agents
-npm run start -w agents
-```
-
-The starter prints a readiness message and `{"agent":"starter","status":"ready"}`.
-It requires no running API, database, or credentials. Root `npm run build` and
-`npm run typecheck` include this workspace. Root `npm run dev` starts only the web
-application and API; automations are invoked explicitly.
-
-## Add an agent
-
-Create `src/agents/<agent-name>/` with its implementation, prompts if needed, and
-a README describing purpose, inputs, outputs, permissions, configuration, and run
-instructions. Implement the shared `Agent<Input, Output>` interface and wire the
-agent into the CLI or a workflow. Put reusable integrations in `src/tools/` and
-orchestration in `src/workflows/`. Add meaningful tests with synthetic fixtures
-when implementing real behavior.
-
-Copy `.env.example` to `.env` when configuration is needed. The runtime loads
-`agents/.env` in development and after compilation. Keep credentials and client
-data out of Git. Access application data through deliberate backend APIs or
-explicitly scoped database access. Document actions requiring human review.
+Backend context builders read firm/client records. Thin Next.js Maya adapters
+combine that context with the agent call; existing actions persist the result.
+Dependencies flow from agents to backend contracts/helpers, never from backend
+to agents. External side effects should remain explicit backend operations.

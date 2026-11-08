@@ -1,18 +1,18 @@
-# LegalRoute AI
+# LegalRoute web application
 
-Chat-first intake and client management for law firms. Clients answer a firm's intake form by talking with
-Maya, an AI voice assistant; attorneys review intakes, manage clients and build forms by chatting with Maya.
+The Phase 1 Next.js application runs from this folder at http://localhost:3000.
+Screens, route handlers, and framework-specific adapters remain here. Database
+models/services and AI implementations now live in the sibling `backend/` and
+`agents/` workspaces. See the [root README](../README.md) for the current layout.
 
-Built with Next.js 16 (App Router, TypeScript), PostgreSQL via Drizzle ORM, Tailwind CSS v4, OpenAI or
-Anthropic for the AI, and Deepgram for speech.
+Run `npm ci` from the **repository root**, not this directory. Existing
+`.env.local`, uploads, recordings, and web commands remain supported. `npm run dev`
+and `npm run build` first build the backend and agent packages automatically.
+The root lockfile covers all workspaces; there is no separate web lockfile.
 
-This is the **Phase 1 app** of the LEGALROUTE-APP repository. Everything in this guide runs from this
-`legal_route_ai/` folder. The `frontend/`, `backend/` and `agents/` folders at the repo root are a separate
-scaffold with its own setup ([root README](../README.md)); you don't need them to run this app.
-
-> **Heads-up:** this is Next.js 16, which differs from older versions (for example, `src/proxy.ts` replaces
-> middleware, and `params` / `cookies()` are async). Check `node_modules/next/dist/docs/` before changing
-> framework-level code.
+The setup reference below retains the app's existing operating-system and
+provider instructions. Use root installation and database commands from the
+root README when working in this monorepo.
 
 ## Prerequisites
 
@@ -117,14 +117,14 @@ git clone https://github.com/legalroute/LEGALROUTE-APP.git
 cd LEGALROUTE-APP
 git checkout feature-phase-1
 cd legal_route_ai           # this app lives in its own folder; run every command below from here
-npm install
+npm ci --prefix ..
 ```
 
 The repo is private: ask the owner to add your GitHub account as a collaborator, and sign in with
 `gh auth login` (or a GitHub personal access token) if `git clone` says "Repository not found".
 
 This folder is a standalone Next.js app. It is separate from the `frontend/`, `backend/` and `agents/`
-scaffold at the repo root, and is not part of that npm workspace. Run `npm install` here, not at the root.
+scaffold at the repo root, and is not part of that npm workspace. Run `npm ci --prefix ..` here, not at the root.
 
 ### 2. Create the database
 
@@ -320,3 +320,12 @@ testing with real people.
 | No voice / transcription | Check `DEEPGRAM_API_KEY` |
 | I signed in but see no data | You got your own firm (only the first sign-in joins My Law Firm). See step 6 |
 | Type errors about routes after adding or removing a page | `npx next typegen` |
+
+## Native attorney scheduling
+
+The Calendar page now supports LegalRoute appointments without connecting an
+external calendar. Attorneys can create, reschedule, and cancel appointments,
+record attendees, optionally link a client, and view day/week/month calendars.
+Run `npm run db:migrate` before opening the updated page. Native appointments
+are not automatically synced to connected calendars and do not send invitations.
+See [scheduling model and backend rules](../docs/scheduling.md).

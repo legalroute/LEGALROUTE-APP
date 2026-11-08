@@ -7,14 +7,91 @@
     "dev": "tsx src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "node --conditions=development --import tsx --test tests/*.test.ts"
   },
   "dependencies": {
-    "dotenv": "^17.2.0"
+    "dotenv": "^17.2.0",
+    "@anthropic-ai/sdk": "^0.132.0",
+    "openai": "^7.30.0",
+    "zod": "^4.6.5",
+    "@legalroute/backend": "0.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "tsx": "^4.20.0",
     "typescript": "~5.9.2"
+  },
+  "exports": {
+    "./agents/intake/legacy": {
+      "types": "./src/agents/intake/legacy.ts",
+      "development": "./src/agents/intake/legacy.ts",
+      "default": "./dist/agents/intake/legacy.js"
+    },
+    "./agents/intake/template": {
+      "types": "./src/agents/intake/template.ts",
+      "development": "./src/agents/intake/template.ts",
+      "default": "./dist/agents/intake/template.js"
+    },
+    "./agents/maya/builder": {
+      "types": "./src/agents/maya/builder.ts",
+      "development": "./src/agents/maya/builder.ts",
+      "default": "./dist/agents/maya/builder.js"
+    },
+    "./agents/maya/client": {
+      "types": "./src/agents/maya/client.ts",
+      "development": "./src/agents/maya/client.ts",
+      "default": "./dist/agents/maya/client.js"
+    },
+    "./agents/maya/home": {
+      "types": "./src/agents/maya/home.ts",
+      "development": "./src/agents/maya/home.ts",
+      "default": "./dist/agents/maya/home.js"
+    },
+    "./agents/starter/index": {
+      "types": "./src/agents/starter/index.ts",
+      "development": "./src/agents/starter/index.ts",
+      "default": "./dist/agents/starter/index.js"
+    },
+    "./llm/anthropic": {
+      "types": "./src/llm/anthropic.ts",
+      "development": "./src/llm/anthropic.ts",
+      "default": "./dist/llm/anthropic.js"
+    },
+    "./llm/index": {
+      "types": "./src/llm/index.ts",
+      "development": "./src/llm/index.ts",
+      "default": "./dist/llm/index.js"
+    },
+    "./llm/openai": {
+      "types": "./src/llm/openai.ts",
+      "development": "./src/llm/openai.ts",
+      "default": "./dist/llm/openai.js"
+    },
+    "./llm/structured": {
+      "types": "./src/llm/structured.ts",
+      "development": "./src/llm/structured.ts",
+      "default": "./dist/llm/structured.js"
+    },
+    "./llm/types": {
+      "types": "./src/llm/types.ts",
+      "development": "./src/llm/types.ts",
+      "default": "./dist/llm/types.js"
+    },
+    "./shared/assistant": {
+      "types": "./src/shared/assistant.ts",
+      "development": "./src/shared/assistant.ts",
+      "default": "./dist/shared/assistant.js"
+    },
+    "./shared/types": {
+      "types": "./src/shared/types.ts",
+      "development": "./src/shared/types.ts",
+      "default": "./dist/shared/types.js"
+    },
+    "./tools/deepgram": {
+      "types": "./src/tools/deepgram.ts",
+      "development": "./src/tools/deepgram.ts",
+      "default": "./dist/tools/deepgram.js"
+    }
   }
 }

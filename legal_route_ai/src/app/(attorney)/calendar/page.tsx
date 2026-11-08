@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { Info } from "lucide-react";
-import { clients, db } from "@/db";
+import { appointmentAttendees, appointments, clients, db } from "@/db";
 import { Card, PageHeader, Pill, buttonClass } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { getConnections, providerConfigured } from "@/lib/calendar";
 import { disconnectCalendar } from "./actions";
 import { ScheduleForm } from "./schedule-form";
+import { AppointmentCalendar } from "./appointment-calendar";
 
 export const metadata: Metadata = { title: "Calendar — LegalRoute" };
 
@@ -25,14 +26,30 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
   const calendly = connections.find((c) => c.provider === "calendly");
   const clientRows = await db.select({ id: clients.id, name: clients.name }).from(clients).where(eq(clients.lawFirmId, user.firm.id)).orderBy(asc(clients.name));
 
+  const rows = await db.select({ appointment: appointments, clientName: clients.name }).from(appointments)
+    .leftJoin(clients, and(eq(clients.id, appointments.clientId), eq(clients.lawFirmId, user.firm.id)))
+    .where(and(eq(appointments.organizerId, user.id), eq(appointments.lawFirmId, user.firm.id)))
+    .orderBy(asc(appointments.startsAt));
+  const attendees = await db.select({ appointmentId: appointmentAttendees.appointmentId, email: appointmentAttendees.email })
+    .from(appointmentAttendees).innerJoin(appointments, eq(appointments.id, appointmentAttendees.appointmentId))
+    .where(and(eq(appointments.organizerId, user.id), eq(appointments.lawFirmId, user.firm.id)));
+  const calendarRows = rows.map(({ appointment: a, clientName }) => ({
+    id: a.id, version: a.version, title: a.title, clientId: a.clientId, clientName,
+    startsAt: a.startsAt.toISOString(), endsAt: a.endsAt.toISOString(), timeZone: a.timeZone,
+    location: a.location, notes: a.notes, status: a.status,
+    attendees: attendees.filter((person) => person.appointmentId === a.id).map((person) => person.email),
+  }));
+
   return (
     <div className="mx-auto max-w-5xl">
-      <PageHeader title="Calendar" subtitle="Connect your existing calendar apps. There's no separate calendar to maintain." />
+      <PageHeader title="Calendar" subtitle="Schedule and manage your appointments in LegalRoute." />
       {typeof sp.error === "string" && ERRORS[sp.error] && <p className="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-700">{ERRORS[sp.error]}</p>}
       {typeof sp.connected === "string" && (
         <p className="mb-4 rounded-lg bg-green-50 px-4 py-2.5 text-sm text-green-800">{sp.connected === "google" ? "Google Calendar" : "Calendly"} connected.</p>
       )}
 
+      <AppointmentCalendar appointments={calendarRows} clients={clientRows} defaultClientId={typeof sp.client === "string" ? sp.client : undefined} />
+      <h2 className="mb-3 text-lg font-semibold">Optional calendar connections</h2>
       <div className="grid gap-4 sm:grid-cols-3">
         <ProviderCard
           name="Google Calendar"
@@ -64,11 +81,11 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
 
       <p className="mt-4 flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
         <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
-        LegalRoute opens your connected calendar to view and create events. All scheduling changes happen directly in your calendar app.
+        Connections below create external events or share booking links separately. They do not sync your LegalRoute appointments.
       </p>
 
       <Card className="mt-6 p-5">
-        <h2 className="mb-1 font-semibold">Schedule a consultation</h2>
+        <h2 className="mb-1 font-semibold">Schedule through a connected service</h2>
         <p className="mb-4 text-sm text-slate-500">Book it in Google Calendar, or send the client your Calendly link.</p>
         {google || calendly ? (
           <ScheduleForm

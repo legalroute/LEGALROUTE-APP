@@ -1,4 +1,4 @@
-import type { Agent } from '../../shared/types.js';
+import type { Agent } from '../../shared/types.ts';
 
 export const starterAgent: Agent<void, { status: 'ready' }> = {
   name: 'starter',

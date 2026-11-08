@@ -1,112 +1,92 @@
 # LegalRoute
 
-This repository holds two separate projects. Each one installs and runs on its own.
+Attorney client management, intake, AI assistance, and native scheduling in one
+npm workspace repository.
 
-| Folder | What it is | Stack | Runs at | Setup guide |
-|---|---|---|---|---|
-| [`legal_route_ai/`](legal_route_ai/) | **Phase 1 app.** Attorney screens, Maya assistant, client voice intake | Next.js 16, Drizzle, PostgreSQL | http://localhost:3000 | [legal_route_ai/README.md](legal_route_ai/README.md) |
-| `frontend/`, `backend/`, `agents/` | **Scaffold.** Starting point for a separate frontend, API and agents (no features yet) | Vite + React, Express, PostgreSQL in Docker | http://localhost:5173 (API on 3001) | [Scaffold setup](#scaffold-frontend-backend-agents) below |
-
-**Want to run the Phase 1 app?** Follow [legal_route_ai/README.md](legal_route_ai/README.md) only. You don't
-need the scaffold steps below, and you don't run `npm install` at the repo root.
-
-## Get the code
-
-The repository is private. Ask the owner to add your GitHub account as a collaborator, then:
-
-```sh
-git clone https://github.com/legalroute/LEGALROUTE-APP.git
-cd LEGALROUTE-APP
-git checkout feature-phase-1   # the Phase 1 app is on this branch until it is merged into main
-```
-
-If `git clone` says "Repository not found", sign in first with `gh auth login` (GitHub CLI) or a personal
-access token.
-
-## Requirements (both projects)
-
-- **Node.js 22.12 or newer** (Node 24 recommended; `.nvmrc` is included), with npm
-- **Git**
-- **PostgreSQL:** the scaffold uses Docker (`compose.yaml`). The Phase 1 app works with either a local
-  PostgreSQL install or that same Docker database; see its README.
-
-Step-by-step installs for Windows, macOS and Linux are in
-[legal_route_ai/README.md → Prerequisites](legal_route_ai/README.md#prerequisites).
-
-**Both projects use PostgreSQL on port 5432.** Run either the Docker database or a locally installed
-PostgreSQL, not both at once. The Phase 1 app can use the Docker one (database `legal_ai`), so a single
-PostgreSQL can serve both projects.
-
-## Scaffold (frontend, backend, agents)
+## Code ownership
 
 ```text
-frontend/      React application powered by Vite
-backend/       Express API and PostgreSQL connection pool
-agents/        TypeScript automation runtime and starter agent
-compose.yaml   Local PostgreSQL with a persistent named volume
+legal_route_ai/   Next.js application: screens, HTTP routes, Server Actions,
+                 cookies, redirects, and page revalidation
+backend/         Database schema/migrations, authentication persistence,
+                 scheduling, firm services, integrations, and AI context reads
+agents/          Maya, intake agents, provider adapters, and speech tools
+frontend/        Original Vite scaffold (optional, not the Phase 1 application)
+compose.yaml     Local PostgreSQL
 ```
 
-These three folders are an npm workspace managed from the repo root. `legal_route_ai/` is **not** part of
-that workspace. The scaffold additionally needs Docker Desktop or Docker Engine with Compose v2.
+Next.js imports backend and agent packages in-process. This is a code/package
+separation, not a migration to separate HTTP services. The Express starter in
+`backend/src/index.ts` remains an optional health-check server; the Phase 1 UI
+does not call it. Some existing route/Server Action orchestration still uses the
+backend's exported data layer. Compatibility modules under `legal_route_ai/src/lib`
+and `src/db` point at the owning packages; they contain no duplicate models or
+provider implementations.
 
-### Local setup
+## Local development
 
-Run from the repository root:
+Requirements: Node.js 24 recommended (minimum 22.12), npm, Docker Desktop/Compose,
+and Git. Run dependency installation from this repository root. There is one
+committed root `package-lock.json`.
 
 ```sh
-cp .env.example .env
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-npm install
+npm ci
+cp .env.example .env                         # only if .env does not exist
+cp legal_route_ai/.env.example legal_route_ai/.env.local  # only if missing
 npm run db:up
+```
+
+Set `DATABASE_URL` in `legal_route_ai/.env.local` to match Compose. With the
+unmodified local Compose defaults:
+
+```ini
+DATABASE_URL=postgresql://legalroute:legalroute_local@127.0.0.1:5432/legalroute
+```
+
+Then:
+
+```sh
+npm run db:migrate
 npm run dev
 ```
 
-Open http://localhost:5173. The API listens on http://127.0.0.1:3001.
-The page reports API/database connectivity. Check it directly:
+Open http://localhost:3000. Existing `.env.local` configuration, recordings, and
+uploads remain in `legal_route_ai/`. Never overwrite a configured environment
+file or commit real secrets/client data. Backend migration tools also support
+`backend/.env.local` or `backend/.env`; explicit process environment takes priority.
 
-```sh
-curl --fail http://127.0.0.1:3001/api/health
-```
+The web app's `predev` and `prebuild` compile backend/agent packages automatically.
+Next.js development resolves package source exports for live changes; production
+uses the compiled package entrypoints. Start commands from the appropriate npm
+workspace to keep existing local upload/recording paths stable.
 
-A successful response is `{"status":"ok","database":"connected"}`. If PostgreSQL
-is unavailable, the endpoint returns HTTP 503. No tables or sample records are
-created. Add schema migrations before implementing persistent features.
-
-Vite proxies `/api` to the local backend, so local development needs no CORS setup.
-`VITE_API_BASE_URL` is public browser configuration and defaults to `/api`.
-If changing the backend port, also update `frontend/vite.config.ts`.
-Root `.env` configures Compose; `backend/.env` configures the API. Keep database
-credentials and port in sync (URL-encode special characters in `DATABASE_URL`).
-The database binds to loopback only. The example credentials are for local use.
-If port 5432 is occupied, change `POSTGRES_PORT` and the port in `DATABASE_URL`.
-Changing database credentials after initialization does not update the existing
-volume; manage existing roles with SQL or deliberately recreate the local volume.
-
-### Commands
-
-Run these from the repository root. They apply to the scaffold only.
+## Checks and commands
 
 | Command | Purpose |
 | --- | --- |
-| `npm run dev` | Start frontend and backend together |
-| `npm run typecheck` | Check all TypeScript workspaces |
-| `npm run build` | Build all workspaces |
-| `npm run agents:run` | Run the local starter agent once |
-| `npm start` | Run the built API |
-| `npm run db:up` | Start PostgreSQL and wait for health |
-| `npm run db:down` | Stop PostgreSQL, retaining data |
-| `npm run db:logs` | Follow database logs |
-| `npm run preview -w frontend` | Preview the built frontend locally |
+| `npm run dev` | Run the Phase 1 Next.js app |
+| `npm start` | Run the built Next.js app |
+| `npm run start:api` | Run the optional Express health server |
+| `npm test` | Backend and agent regression tests; no provider keys needed |
+| `npm run test:postgres -w backend` | Isolated live PostgreSQL integration tests |
+| `npm run typecheck` | Typecheck all workspaces |
+| `npm run build` | Build packages, legacy frontend, and Next.js app |
+| `npm run build -w legal_route_ai` | Build web app using Webpack |
+| `npm run lint` | Lint backend, agents, and Next.js code |
+| `npm run db:migrate` | Apply backend-owned migrations |
+| `npm run db:generate -w backend` | Generate migrations from the backend schema |
+| `npm run db:down` | Stop local PostgreSQL, preserving its volume |
+| `npm run agents:run` | Run the starter agent once |
+| `npm run dev:scaffold` | Run the original Vite/Express scaffold |
 
-Build output is in `frontend/dist`, `backend/dist`, and `agents/dist`. For deployment, serve the
-frontend through a static host and route `/api` to the backend. The Vite dev proxy
-is not included in production builds or preview. Authentication, application
-features, migrations, production hosting, and application automations are future work.
-See [agents/README.md](agents/README.md) for the agent runtime and structure.
+To include a production HTTP smoke test after `npm run build`, run
+`TEST_WEB=1 npm run test:postgres -w backend` (macOS/Linux). This starts a temporary
+web server, checks login protection and calendar data delivery, and stops it.
 
-## Contributing
+Live PostgreSQL tests create/drop a uniquely named test database and require a
+local role with `CREATEDB`. They never migrate or seed the configured application
+database. The default Compose development role supports these tests.
 
-- Commit `package-lock.json` changes; installs can then use `npm ci`.
-- Environment files (`.env`, `.env.local`), dependencies and build output are gitignored. Keep real
-  credentials and client data out of Git.
+See [backend](backend/README.md), [agents](agents/README.md),
+[web app setup](legal_route_ai/README.md), and the
+[scheduling model](docs/scheduling.md).
