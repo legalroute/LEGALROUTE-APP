@@ -42,3 +42,6 @@ here, while agents consume that context as data.
 
 The optional Express health endpoint uses the same Drizzle/PostgreSQL pool.
 There is no second legacy database connection module.
+
+See the [data model README](src/db/README.md) for entity relationships, flexibility,
+current constraints, and the proposed generic connector/Google Sheets design.

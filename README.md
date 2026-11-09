@@ -90,3 +90,6 @@ database. The default Compose development role supports these tests.
 See [backend](backend/README.md), [agents](agents/README.md),
 [web app setup](legal_route_ai/README.md), and the
 [scheduling model](docs/scheduling.md).
+
+The [data model README](backend/src/db/README.md) explains the implemented schema
+and proposes a reusable connector feature, starting with Google Sheets client imports.
