@@ -114,6 +114,26 @@
       "types": "./src/contracts/ai.ts",
       "development": "./src/contracts/ai.ts",
       "default": "./dist/contracts/ai.js"
+    },
+    "./connectors/service": {
+      "types": "./src/connectors/service.ts",
+      "development": "./src/connectors/service.ts",
+      "default": "./dist/connectors/service.js"
+    },
+    "./connectors/values": {
+      "types": "./src/connectors/values.ts",
+      "development": "./src/connectors/values.ts",
+      "default": "./dist/connectors/values.js"
+    },
+    "./connectors/google-sheets": {
+      "types": "./src/connectors/google-sheets.ts",
+      "development": "./src/connectors/google-sheets.ts",
+      "default": "./dist/connectors/google-sheets.js"
+    },
+    "./connectors/secrets": {
+      "types": "./src/connectors/secrets.ts",
+      "development": "./src/connectors/secrets.ts",
+      "default": "./dist/connectors/secrets.js"
     }
   }
 }

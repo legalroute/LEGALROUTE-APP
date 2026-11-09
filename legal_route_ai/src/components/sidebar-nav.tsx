@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, FilePenLine, Home, Inbox, Settings, Users } from "lucide-react";
+import { CalendarDays, FilePenLine, Home, Inbox, Plug, Settings, Users } from "lucide-react";
 
 const NAV = [
   { href: "/home", label: "Home", icon: Home },
@@ -10,6 +10,7 @@ const NAV = [
   { href: "/intakes", label: "Intakes", icon: Inbox },
   { href: "/intake-builder", label: "Intake Builder", icon: FilePenLine },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/connections", label: "Connections", icon: Plug },
   { href: "/firm-settings", label: "Settings", icon: Settings },
 ] as const;
 

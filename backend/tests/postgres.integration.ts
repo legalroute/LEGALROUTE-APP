@@ -14,6 +14,12 @@ config({ path: ["../.env", "../../legal_route_ai/.env.local"].map((p) => fileURL
 test("PostgreSQL: migrations, magic-link/session lifecycle, and simultaneous scheduling", async () => {
   assert.ok(process.env.DATABASE_URL, "Set DATABASE_URL to a local PostgreSQL role allowed to create a temporary database.");
   const original = process.env.DATABASE_URL;
+  const fixtureEnv = ["GOOGLE_SHEETS_CLIENT_ID", "GOOGLE_SHEETS_CLIENT_SECRET", "CONNECTOR_ENCRYPTION_KEY", "APP_URL"];
+  const savedEnv = new Map(fixtureEnv.map((key) => [key, process.env[key]]));
+  process.env.GOOGLE_SHEETS_CLIENT_ID = "test-client";
+  process.env.GOOGLE_SHEETS_CLIENT_SECRET = "test-secret";
+  process.env.CONNECTOR_ENCRYPTION_KEY = "ab".repeat(32);
+  process.env.APP_URL = "http://localhost:3000";
   const admin = postgres(original, { max: 1 });
   const name = `legalroute_test_${randomUUID().replaceAll("-", "")}`;
   let close: (() => Promise<void>) | undefined;
@@ -50,6 +56,41 @@ test("PostgreSQL: migrations, magic-link/session lifecycle, and simultaneous sch
     assert.ok(id?.status === "fulfilled");
     await scheduling.cancelAppointment(actor, id.value, 1);
     await scheduling.saveAppointment(actor, input);
+    const connector = await import("../src/connectors/service.ts");
+    const begun = await connector.beginConnection(actor);
+    const consent = new URL(begun.url);
+    assert.equal(consent.searchParams.get("code_challenge_method"), "S256");
+    assert.equal(consent.searchParams.get("state"), begun.state);
+    const fakeGoogle: typeof fetch = async (url) => String(url).includes("/token")
+      ? Response.json({ access_token: "mock-access", refresh_token: "mock-refresh", scope: "openid email https://www.googleapis.com/auth/spreadsheets.readonly", expires_in: 3600 })
+      : Response.json({ sub: "google-account", email: "owner@example.test", email_verified: true });
+    await connector.finishConnection(actor, begun.state, "mock-code", fakeGoogle);
+    await assert.rejects(connector.finishConnection(actor, begun.state, "mock-code", fakeGoogle), /expired/);
+    const savedConnections = await data.db.select().from(data.connectorConnections);
+    assert.equal(savedConnections.length, 1);
+    assert.ok(!savedConnections[0].encryptedCredentials?.includes("mock-access"));
+    let pause = false;
+    let releaseRead: (() => void) | undefined;
+    let reachedRead: (() => void) | undefined;
+    const fakeSheets: typeof fetch = async (url) => {
+      if (String(url).includes("/values/")) {
+        if (pause) { reachedRead?.(); await new Promise<void>((resolve) => { releaseRead = resolve; }); }
+        return Response.json({ values: [["Referral", "Count"], ["Example source", "3"]] });
+      }
+      return Response.json({ spreadsheetId: "example_sheet_1234567890", properties: { title: "Test spreadsheet" }, sheets: [{ properties: { sheetId: 0, title: "Data", gridProperties: { rowCount: 100, columnCount: 5 } } }] });
+    };
+    const datasetService = connector.createDatasetService(data.db, fakeSheets);
+    const preview = await datasetService.inspect(actor, savedConnections[0].id, "example_sheet_1234567890", 0);
+    assert.ok(preview.preview);
+    const datasetId = await datasetService.save(actor, { connectionId: savedConnections[0].id, spreadsheet: "example_sheet_1234567890", sheetId: 0, name: "Referrals test dataset", contentHash: preview.preview.contentHash, types: ["text", "number"] });
+    pause = true;
+    const reading = new Promise<void>((resolve) => { reachedRead = resolve; });
+    const firstRefresh = datasetService.refresh(actor, datasetId);
+    await reading;
+    await assert.rejects(datasetService.refresh(actor, datasetId), /already running/);
+    releaseRead?.(); await firstRefresh;
+    pause = false;
+    assert.equal((await datasetService.table(actor, datasetId)).rows[0].values.c1, 3);
     if (process.env.TEST_WEB === "1") {
       // Smoke-test the built Next.js adapter against this same isolated database.
       const portFinder = createServer();
@@ -86,6 +127,19 @@ test("PostgreSQL: migrations, magic-link/session lifecycle, and simultaneous sch
         assert.ok(page.includes("Schedule and manage your appointments in LegalRoute."), "Calendar server page should render");
         assert.ok(page.includes("Concurrent consultation"), "Calendar should serialize the test appointment for hydration");
         assert.ok(!page.includes("Application error"), "Calendar must not render an application error");
+        const connectionsPage = await fetch(`${base}/connections`, { headers: { cookie: `lr_session=${session.token}` } });
+        assert.equal(connectionsPage.status, 200);
+        assert.ok((await connectionsPage.text()).includes("Add a table"), "Connections page should show the connected account builder");
+        const datasetPage = await fetch(`${base}/datasets/${datasetId}`, { headers: { cookie: `lr_session=${session.token}` } });
+        assert.equal(datasetPage.status, 200);
+        const datasetHtml = await datasetPage.text();
+        assert.ok(datasetHtml.includes("Referrals test dataset"));
+        assert.ok(datasetHtml.includes("Example source"));
+        const oauth = await fetch(`${base}/api/connectors/google-sheets/connect`, { headers: { cookie: `lr_session=${session.token}` }, redirect: "manual" });
+        assert.equal(oauth.status, 307);
+        assert.equal(new URL(oauth.headers.get("location")!).hostname, "accounts.google.com");
+        const rejected = await fetch(`${base}/api/connectors/google-sheets/callback?code=fake&state=wrong`, { headers: { cookie: `lr_session=${session.token}; lr_sheets_oauth=different` }, redirect: "manual" });
+        assert.match(rejected.headers.get("location") ?? "", /error=authorization/);
       } finally {
         if (server.exitCode === null) { server.kill("SIGTERM"); await once(server, "exit"); }
       }
@@ -95,6 +149,7 @@ test("PostgreSQL: migrations, magic-link/session lifecycle, and simultaneous sch
   } finally {
     if (close) await close();
     process.env.DATABASE_URL = original;
+    for (const [key, value] of savedEnv) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
     if (created) await admin.unsafe(`DROP DATABASE "${name}" WITH (FORCE)`);
     await admin.end();
   }

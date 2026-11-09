@@ -386,3 +386,90 @@ export const appointmentAttendees = pgTable("appointment_attendees", {
 }, (t) => [uniqueIndex("appointment_attendees_email_idx").on(t.appointmentId, t.email)]);
 
 export type Appointment = typeof appointments.$inferSelect;
+
+// Firm-owned connector accounts and read-only dataset snapshots.
+export const connectorConnections = pgTable("connector_connections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  lawFirmId: uuid("law_firm_id").notNull().references(() => lawFirms.id, { onDelete: "cascade" }),
+  connectedByUserId: uuid("connected_by_user_id").notNull(),
+  provider: text("provider").notNull().default("google_sheets"),
+  providerAccountId: text("provider_account_id").notNull(),
+  accountEmail: text("account_email").notNull(),
+  scopes: text("scopes").array().notNull(),
+  encryptedCredentials: text("encrypted_credentials"),
+  version: integer("version").notNull().default(1),
+  status: text("status").notNull().default("connected"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("connector_connection_id_firm").on(t.id, t.lawFirmId),
+  uniqueIndex("connector_connection_account").on(t.lawFirmId, t.connectedByUserId, t.provider, t.providerAccountId),
+  foreignKey({ columns: [t.connectedByUserId, t.lawFirmId], foreignColumns: [users.id, users.lawFirmId] }),
+  check("connector_connection_status", sql`${t.status} in ('connected','disconnected')`),
+]);
+export const connectorOAuthStates = pgTable("connector_oauth_states", {
+  tokenHash: text("token_hash").primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  encryptedVerifier: text("encrypted_verifier").notNull(),
+  redirectUri: text("redirect_uri").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+export const datasets = pgTable("datasets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  lawFirmId: uuid("law_firm_id").notNull(),
+  connectionId: uuid("connection_id").notNull(),
+  name: text("name").notNull(),
+  spreadsheetId: text("spreadsheet_id").notNull(),
+  sheetId: integer("sheet_id").notNull(),
+  version: integer("version").notNull().default(1),
+  sourceTitle: text("source_title").notNull(),
+  sheetTitle: text("sheet_title").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("dataset_id_firm").on(t.id, t.lawFirmId),
+  foreignKey({ columns: [t.connectionId, t.lawFirmId], foreignColumns: [connectorConnections.id, connectorConnections.lawFirmId] }),
+  check("dataset_name_present", sql`length(trim(${t.name})) between 1 and 150`),
+]);
+export type DatasetColumn = { id: string; header: string; label: string; type: "text" | "number" | "boolean" | "date" };
+export type DatasetCell = string | number | boolean | null;
+export const datasetSnapshots = pgTable("dataset_snapshots", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  lawFirmId: uuid("law_firm_id").notNull(),
+  datasetId: uuid("dataset_id").notNull(),
+  active: boolean("active").notNull().default(true),
+  schemaHash: text("schema_hash").notNull(),
+  columns: jsonb("columns").$type<DatasetColumn[]>().notNull(),
+  rowCount: integer("row_count").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("snapshot_id_firm").on(t.id, t.lawFirmId),
+  uniqueIndex("dataset_one_active_snapshot").on(t.datasetId).where(sql`${t.active} = true`),
+  foreignKey({ columns: [t.datasetId, t.lawFirmId], foreignColumns: [datasets.id, datasets.lawFirmId] }).onDelete("cascade"),
+  check("snapshot_row_count", sql`${t.rowCount} >= 0`),
+]);
+export const datasetRows = pgTable("dataset_rows", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  lawFirmId: uuid("law_firm_id").notNull(),
+  snapshotId: uuid("snapshot_id").notNull(),
+  position: integer("position").notNull(),
+  raw: jsonb("raw").$type<Record<string, string>>().notNull(),
+  values: jsonb("values").$type<Record<string, DatasetCell>>().notNull(),
+  errors: jsonb("errors").$type<string[]>().notNull().default([]),
+}, (t) => [
+  uniqueIndex("dataset_row_position").on(t.snapshotId, t.position),
+  foreignKey({ columns: [t.snapshotId, t.lawFirmId], foreignColumns: [datasetSnapshots.id, datasetSnapshots.lawFirmId] }).onDelete("cascade"),
+  check("dataset_row_positive_position", sql`${t.position} > 0`),
+]);
+export const connectorRuns = pgTable("connector_runs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  lawFirmId: uuid("law_firm_id").notNull(),
+  datasetId: uuid("dataset_id").notNull(),
+  status: text("status").notNull().default("running"),
+  error: text("error"),
+  rowCount: integer("row_count"),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+}, (t) => [
+  foreignKey({ columns: [t.datasetId, t.lawFirmId], foreignColumns: [datasets.id, datasets.lawFirmId] }).onDelete("cascade"),
+  uniqueIndex("dataset_one_running_refresh").on(t.datasetId).where(sql`${t.status} = 'running'`),
+  check("connector_run_status", sql`${t.status} in ('running','succeeded','failed')`),
+]);

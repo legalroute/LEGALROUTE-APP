@@ -44,4 +44,5 @@ The optional Express health endpoint uses the same Drizzle/PostgreSQL pool.
 There is no second legacy database connection module.
 
 See the [data model README](src/db/README.md) for entity relationships, flexibility,
-current constraints, and the proposed generic connector/Google Sheets design.
+current constraints, and the implemented firm-owned Google Sheets dataset model.
+See the [connector setup guide](src/connectors/README.md) to enable OAuth and encryption.

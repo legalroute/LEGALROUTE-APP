@@ -2,8 +2,8 @@
 
 This README describes the **implemented model** in [schema.ts](schema.ts).
 PostgreSQL is the application source of truth; Drizzle defines tables and types.
-The generic connector design below is **proposed**, with no connector tables,
-Google Sheets authorization, jobs, or sync implemented yet.
+The read-only Google Sheets dataset MVP is implemented; its model and remaining
+extensions are described below and in the [connector guide](../connectors/README.md).
 
 ## Ownership and locations
 
@@ -116,106 +116,55 @@ than referencing a user, so an account can be created after link verification.
 - Intake answer values are text; richer typed fields, custom client attributes,
   full template versioning, and validated custom metadata need deliberate models.
 
-## Proposed generic connector feature
+## Implemented connectors: firm-owned datasets
 
-A **connector** is a provider adapter (for example, Google Sheets). A
-**connection** is a firm's authorized account. A **binding** selects a resource
-and maps its data to a LegalRoute domain. Keeping these separate allows one
-account to connect multiple spreadsheets and future providers to reuse sync logic.
+A firm can connect Google Sheets, paste a spreadsheet URL, select a tab, preview
+its columns/types, and save a flexible read-only table. Google Sheets remains the
+source of truth; LegalRoute stores the latest complete snapshot and supports
+manual Refresh. This does not create or update core client records.
 
-### Proposed tables (not implemented)
-
-| Table | Key fields and responsibility |
+| Implemented table | Responsibility |
 | --- | --- |
-| `connector_connections` | `id`, `law_firm_id`, `connected_by_user_id`, `provider_key`, `provider_account_id`, display label, granted scopes, `credential_ref`, status, timestamps. `credential_ref` identifies an encrypted secret; do not place tokens in ordinary JSON config. |
-| `connector_bindings` | `id`, firm/connection IDs, external resource ID, tab ID/range, target entity, import/export direction, mapping version, validated mapping JSON, status, sync cursor, timestamps. Starts with client imports. |
-| `connector_runs` | `id`, firm/binding IDs, trigger, status, attempt, idempotency key, cursor/checkpoint, record counts, sanitized error summary, start/end times. Provides visible sync history. |
-| `connector_record_links` | `id`, firm/binding IDs, external record key, typed target record ID, last external/internal versions or hashes, last run ID. Makes repeat imports update the intended record rather than duplicate it. |
-| `connector_run_errors` | `id`, firm/run IDs, external record key, error code, safe field-level details. Supports row-level correction without logging complete client records. |
-| `integration_outbox` (later) | Firm, event/entity IDs, event version, destination, status, retry metadata. For reliable exports, write an event in the same transaction as a domain change, then deliver asynchronously. |
-
-Use composite firm FKs throughout. Unique record links should include
-`(binding_id, external_record_key)`; also constrain target links according to the
-binding's domain semantics. A unique idempotency key prevents duplicate job
-creation, but checkpointing and repeat-safe record writes are still needed.
-
-For the first client connector, use a real `client_id` FK in record links. Avoid
-an unchecked universal `entity_type/entity_id` pair: a later appointments binding
-can use a typed link table or explicit nullable target FKs with a check that
-exactly one supported target is set. Validate the target belongs to the binding's
-firm and matches its target domain.
-
-`provider_key` can reference a provider catalog table, with adapter capabilities
-validated in code (such as `read_clients` or `export_appointments`). Adding a new
-provider then usually adds an adapter/catalog entry rather than a column on
-`clients`. JSON mapping/config should include a version and validated schema;
-credentials, domain ownership, and record identity stay in typed fields.
-
-### Proposed flow and Google Sheets MVP
+| `connector_connections` | Firm-owned account, connection owner, scopes, encrypted credentials, status/generation |
+| `connector_oauth_states` | Expiring one-time user-bound state and encrypted PKCE verifier |
+| `datasets` | Source spreadsheet/tab, display name, firm/connection IDs, edit version |
+| `dataset_snapshots` | Typed column definitions in JSONB, schema hash, row count, active version |
+| `dataset_rows` | Snapshot-local positions, raw text, normalized cell maps and type diagnostics |
+| `connector_runs` | Refresh status, counts, safe errors and timestamps |
 
 ```mermaid
-flowchart LR
-    UI[Connections page] --> API[Authenticated backend service]
-    API --> JOB[Sync run and worker]
-    JOB --> ADAPTER[Google Sheets adapter]
-    ADAPTER --> PREVIEW[Normalize and validate rows]
-    PREVIEW --> DOMAIN[Existing client services]
-    DOMAIN --> DB[(PostgreSQL)]
-    JOB --> HISTORY[Run counts and sanitized errors]
+erDiagram
+    LAW_FIRMS ||--o{ CONNECTOR_CONNECTIONS : owns
+    USERS ||--o{ CONNECTOR_CONNECTIONS : connects
+    USERS ||--o{ CONNECTOR_OAUTH_STATES : authorizes
+    CONNECTOR_CONNECTIONS ||--o{ DATASETS : supplies
+    DATASETS ||--o{ DATASET_SNAPSHOTS : captures
+    DATASET_SNAPSHOTS ||--o{ DATASET_ROWS : contains
+    DATASETS ||--o{ CONNECTOR_RUNS : refreshes
 ```
 
-1. A firm administrator connects Google; the backend stores granted scopes and
-   a credential reference. Define admin/delegation permissions before rollout.
-2. The user selects a spreadsheet and tab, then maps columns such as `Full name`
-   to `clients.name`, `Email` to `clients.email`, and `Phone` to `clients.phone`.
-3. Require a stable external record-key column (for example, `LegalRouteRowId`).
-   Row numbers are positions, not durable identities; sorting/reordering must not
-   import a client twice. Do not silently treat names/emails as unique client IDs.
-   For a read-only MVP, the user supplies this key; the connector cannot write it.
-4. Preview new/changed/invalid rows before an explicit **Import clients** action.
-   First extract the web action's client validation/mutation into a reusable
-   backend client service, so UI and connector imports use the same rules.
-5. Start with manual, one-way imports. Treat PostgreSQL as authoritative; show
-   conflicts when an imported field was subsequently changed in LegalRoute.
-   Require explicit resolution rather than silently overwriting local edits.
-6. Commit each record and its record-link update atomically. Retry transient
-   failures with checkpoints and backoff; deduplicate records across attempts.
-   Serialize runs per binding and define handling for edits during a read.
-7. Missing rows never imply client deletion. Reject malformed/duplicate row keys,
-   missing required columns, and changed mappings with actionable row errors.
-8. On disconnect, stop pending work, prevent new runs, and revoke/remove provider
-   credentials. Imported clients remain; retain provenance under a defined policy.
+Columns are embedded in each snapshot rather than modeled as a separate table.
+JSONB values allow different firms' datasets to have different columns without
+DDL changes. Ownership and source references remain typed relational fields.
+Composite firm foreign keys enforce connector/dataset/snapshot/row ownership;
+a partial unique index allows one active snapshot per dataset.
 
-Google documents that Sheets OAuth scopes cannot be restricted to an individual
-worksheet/tab. App-level selected-resource checks therefore do not narrow the
-actual OAuth grant; review file-scoped access options and granted permissions
-before implementing the consent flow. See [Google's scope guidance](https://developers.google.com/workspace/sheets/api/scopes).
-Google Sheets has API quotas; implement bounded reads and backoff rather than
-assuming unlimited requests. See [usage limits](https://developers.google.com/workspace/sheets/api/limits).
+The connection owner (attorney) or firm admin manages its tables, and firm members
+can view them. Preview hashes and edit versions reject stale saves. Changed column
+headers/counts require review. Failed refreshes preserve the prior snapshot;
+disconnect purges cached data and prevents in-flight refresh publication. Only the
+latest snapshot is retained. Rows have no persistent identity across refreshes.
 
-### Proposed code ownership
+See [setup, behavior, limitations and verification](../connectors/README.md),
+including Google scopes, encryption-key management, resource limits, and the
+manual provider test that requires real Google credentials.
 
-```text
-backend/src/connectors/
-  registry.ts              Provider IDs, supported operations and config schemas
-  google-sheets/           OAuth and Google Sheets adapter
-  services/                Connect, preview, import, disconnect, tenant checks
-  jobs/                    Durable execution, retries, checkpoints
-backend/src/db/schema.ts   Future connector tables and constraints
-legal_route_ai/src/app/     Future Connections page and thin request adapters
-agents/src/tools/          Optional calls to permission-checked backend operations
-```
+### Future extensions
 
-No connector directories above are scaffolded yet. Start with the client service,
-connection/binding/run/link models, and manual Google Sheets import; add scheduled
-sync, exports, webhooks, other providers, and two-way conflict resolution later.
-Agents should not hold Google credentials or independently choose which external
-resources they may access.
-
-## Validation before shipping connectors
-
-Test cross-firm access, stable row identity after reordering, repeated imports,
-partial-failure retries, duplicate keys, mapping changes, concurrent jobs, token
-expiry/revocation, local-edit conflicts, and disconnect behavior. Use synthetic
-spreadsheets and a separate test database. Exported spreadsheet content will also
-need a safe policy for formula-like cell values before an export feature ships.
+Durable refresh workers, scheduled sync, a Drive picker, stable external row keys,
+custom display labels, agent query tools, and client mapping remain future work.
+Client mapping should be a separate explicit workflow using backend client
+services, per-firm typed record links, validation previews and conflict handling;
+never infer client identity from name/email or delete clients when source rows
+vanish. Exports need a transactional outbox and safe spreadsheet value handling.
+Two-way editing must define a conflict policy before it is enabled.

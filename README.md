@@ -92,4 +92,7 @@ See [backend](backend/README.md), [agents](agents/README.md),
 [scheduling model](docs/scheduling.md).
 
 The [data model README](backend/src/db/README.md) explains the implemented schema
-and proposes a reusable connector feature, starting with Google Sheets client imports.
+and covers firm-owned, read-only Google Sheets datasets.
+See the [Google Sheets connector setup](backend/src/connectors/README.md) to enable connections.
+
+For business accounts, follow the [Google Workspace connection setup guide](docs/google-sheets-business-setup/README.md), covering operator configuration, firm IT approval, and customer connection steps.
