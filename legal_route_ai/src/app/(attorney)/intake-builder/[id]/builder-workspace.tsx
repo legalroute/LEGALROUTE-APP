@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { ChevronDown, ChevronRight, ExternalLink, Pencil, Plus, Trash2, X } from "lucide-react";
-import type { IntakeConfig } from "@/db/schema";
+import type { IntakeConfig, IntakeQuestion } from "@/db/schema";
+import { fieldTypes } from "@/lib/intake-config";
 import { MayaChat } from "@/components/maya-chat";
 import { Pill, buttonClass, inputClass } from "@/components/ui";
 import type { ChatMessageDto } from "@/lib/maya/history";
@@ -66,12 +67,17 @@ export function BuilderWorkspace({
 
   function saveDirect(next: IntakeConfig) {
     setError(undefined);
+    const previous = config;
     setConfig(next);
     startTransition(async () => {
       const result = await saveTemplateConfig(template.id, next);
-      if (result.error) setError(result.error);
+      if (result.error) { setError(result.error); setConfig(previous); }
       else if (result.config) setConfig(result.config);
     });
+  }
+
+  function updateQuestion(si: number, qi: number, patch: Partial<IntakeQuestion>) {
+    saveDirect({ sections: config.sections.map((s, i) => i === si ? { ...s, questions: s.questions.map((q, j) => j === qi ? { ...q, ...patch } : q) } : s) });
   }
 
   function publish() {
@@ -180,7 +186,7 @@ export function BuilderWorkspace({
               <Plus className="size-4" aria-hidden /> Section
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-3">
+          <fieldset disabled={pending} className="flex-1 overflow-y-auto p-3">
             {config.sections.map((section, si) => {
               const isOpen = open.has(section.id);
               const hasNew = section.questions.some((q) => newIds.has(q.id));
@@ -212,7 +218,7 @@ export function BuilderWorkspace({
                   {isOpen && (
                     <ol className="flex flex-col gap-1 px-3 pb-3">
                       {section.questions.map((q, qi) => (
-                        <li key={q.id} className="group flex items-start gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+                        <li key={q.id} className="group rounded-lg px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50"><div className="flex items-start gap-2">
                           <span className="w-5 shrink-0 text-right text-slate-400">{qi + 1}.</span>
                           <EditableText
                             value={q.text}
@@ -240,6 +246,14 @@ export function BuilderWorkspace({
                             <X className="size-4" aria-hidden />
                             <span className="sr-only">Remove question</span>
                           </button>
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 pl-7">
+                            <label className="text-xs">Type <select disabled={pending} aria-label={`Type for ${q.text}`} value={q.type ?? "text"} className="rounded border p-1" onChange={(e) => updateQuestion(si, qi, { type: e.target.value as IntakeQuestion["type"], choices: ["select", "multiselect"].includes(e.target.value) ? q.choices?.length ? q.choices : ["Option 1", "Option 2"] : [] })}>{fieldTypes.map((t) => <option key={t}>{t}</option>)}</select></label>
+                            <label className="flex items-center gap-1 text-xs"><input type="checkbox" disabled={pending} checked={q.required ?? true} onChange={(e) => updateQuestion(si, qi, { required: e.target.checked })} />Required</label>
+                            <button disabled={pending || qi === 0} type="button" className="text-xs text-orange-700 disabled:text-slate-300" onClick={() => { const sections = config.sections.map((s, i) => { if (i !== si) return s; const questions = [...s.questions]; [questions[qi - 1], questions[qi]] = [questions[qi], questions[qi - 1]]; return { ...s, questions }; }); saveDirect({ sections }); }}>Move up</button>
+                            <button disabled={pending || qi === section.questions.length - 1} type="button" className="text-xs text-orange-700 disabled:text-slate-300" onClick={() => { const sections = config.sections.map((s, i) => { if (i !== si) return s; const questions = [...s.questions]; [questions[qi + 1], questions[qi]] = [questions[qi], questions[qi + 1]]; return { ...s, questions }; }); saveDirect({ sections }); }}>Move down</button>
+                          </div>
+                          {(q.type === "select" || q.type === "multiselect") && <ChoiceEditor key={JSON.stringify(q.choices)} choices={q.choices ?? []} disabled={pending} onSave={(choices) => updateQuestion(si, qi, { choices })} />}
                         </li>
                       ))}
                       <li>
@@ -259,7 +273,7 @@ export function BuilderWorkspace({
               );
             })}
             {config.sections.length === 0 && <p className="p-8 text-center text-sm text-slate-400">No sections yet. Ask Maya to build one.</p>}
-          </div>
+          </fieldset>
         </section>
       </div>
 
@@ -336,4 +350,9 @@ function AddQuestion({ onAdd }: { onAdd: (text: string) => void }) {
       </button>
     </form>
   );
+}
+
+function ChoiceEditor({ choices, disabled, onSave }: { choices: string[]; disabled: boolean; onSave: (values: string[]) => void }) {
+  const [value, setValue] = useState(choices.join(" | "));
+  return <label className="mt-2 block pl-7 text-xs">Options (separate with |)<input disabled={disabled} value={value} onChange={(e) => setValue(e.target.value)} onBlur={() => { const next = value.split("|").map((v) => v.trim()).filter(Boolean); if (JSON.stringify(next) !== JSON.stringify(choices)) onSave(next); }} className={`${inputClass} mt-1`} /></label>;
 }

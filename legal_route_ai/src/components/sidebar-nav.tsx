@@ -10,6 +10,7 @@ const NAV = [
   { href: "/intakes", label: "Intakes", icon: Inbox },
   { href: "/intake-builder", label: "Intake Builder", icon: FilePenLine },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/conflicts", label: "Conflict Checks", icon: Users },
   { href: "/connections", label: "Connections", icon: Plug },
   { href: "/firm-settings", label: "Settings", icon: Settings },
 ] as const;

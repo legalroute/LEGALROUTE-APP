@@ -145,7 +145,8 @@ export const sessions = pgTable("sessions", {
 });
 
 // An intake form: sections of questions. `config` is the working draft; `publishedConfig` is what clients get.
-export type IntakeQuestion = { id: string; text: string };
+export type IntakeFieldType = "text" | "textarea" | "email" | "phone" | "number" | "date" | "boolean" | "select" | "multiselect";
+export type IntakeQuestion = { id: string; text: string; type?: IntakeFieldType | null; required?: boolean | null; choices?: string[] | null };
 export type IntakeSection = { id: string; title: string; questions: IntakeQuestion[] };
 export type IntakeConfig = { sections: IntakeSection[] };
 
@@ -219,7 +220,7 @@ export const intakeSessions = pgTable(
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("intake_sessions_firm_idx").on(t.lawFirmId, t.createdAt)],
+  (t) => [index("intake_sessions_firm_idx").on(t.lawFirmId, t.createdAt), uniqueIndex("intake_sessions_id_firm").on(t.id, t.lawFirmId)],
 );
 
 export const intakeResponses = pgTable(
@@ -473,3 +474,40 @@ export const connectorRuns = pgTable("connector_runs", {
   uniqueIndex("dataset_one_running_refresh").on(t.datasetId).where(sql`${t.status} = 'running'`),
   check("connector_run_status", sql`${t.status} in ('running','succeeded','failed')`),
 ]);
+
+
+// Conflict checks are review aids; a name match is never an automatic legal determination.
+export type ConflictMapping = { sourceSchemaHash?: string; name: string; role: string; aliases?: string; matter?: string; attorney?: string; status?: string; email?: string };
+export type ConflictSubject = { name: string; role: "client" | "opposing"; aliases?: string[]; email?: string };
+export type ConflictCandidate = { id: string; name: string; role: string; aliases: string[]; email: string; matter: string; attorney: string; status: string; source: string };
+export type ConflictMatch = { subject: string; subjectRole: string; candidate: ConflictCandidate; reason: string };
+export const conflictSources = pgTable("conflict_sources", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  lawFirmId: uuid("law_firm_id").notNull().references(() => lawFirms.id),
+  datasetId: uuid("dataset_id").notNull(),
+  mapping: jsonb("mapping").$type<ConflictMapping>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("conflict_source_dataset").on(t.lawFirmId, t.datasetId), foreignKey({ columns: [t.datasetId, t.lawFirmId], foreignColumns: [datasets.id, datasets.lawFirmId] })]);
+export const conflictChecks = pgTable("conflict_checks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  lawFirmId: uuid("law_firm_id").notNull().references(() => lawFirms.id),
+  intakeId: uuid("intake_id"),
+  createdBy: uuid("created_by").notNull(),
+  subjects: jsonb("subjects").$type<ConflictSubject[]>().notNull(),
+  opposingComplete: boolean("opposing_complete").notNull(),
+  fingerprint: text("fingerprint").notNull(),
+  intakeFingerprint: text("intake_fingerprint"),
+  status: text("status").$type<"incomplete" | "matches" | "no_matches">().notNull(),
+  issues: jsonb("issues").$type<string[]>().notNull(),
+  matches: jsonb("matches").$type<ConflictMatch[]>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("conflict_check_id_firm").on(t.id, t.lawFirmId), index("conflict_check_intake").on(t.lawFirmId, t.intakeId, t.createdAt), foreignKey({ columns: [t.intakeId, t.lawFirmId], foreignColumns: [intakeSessions.id, intakeSessions.lawFirmId] }), foreignKey({ columns: [t.createdBy, t.lawFirmId], foreignColumns: [users.id, users.lawFirmId] })]);
+export const conflictReviews = pgTable("conflict_reviews", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  lawFirmId: uuid("law_firm_id").notNull(),
+  checkId: uuid("check_id").notNull(),
+  reviewerId: uuid("reviewer_id").notNull(),
+  decision: text("decision").$type<"clear" | "hold">().notNull(),
+  notes: text("notes").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [foreignKey({ columns: [t.checkId, t.lawFirmId], foreignColumns: [conflictChecks.id, conflictChecks.lawFirmId] }), foreignKey({ columns: [t.reviewerId, t.lawFirmId], foreignColumns: [users.id, users.lawFirmId] }), index("conflict_review_check").on(t.checkId, t.createdAt)]);

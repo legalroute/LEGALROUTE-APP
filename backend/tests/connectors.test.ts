@@ -63,6 +63,19 @@ test("dataset lifecycle: firm isolation, atomic refresh, schema review, stale ed
     assert.ok(preview.preview);
     const input = { connectionId: id, spreadsheet: sourceId, sheetId: 0, name: "Office inventory", contentHash: preview.preview.contentHash, types: preview.preview.columns.map((c) => c.type) };
     const datasetId = await service.save(actor, input);
+    const { createIntakeImportService } = await import("../src/services/intake-import-service.ts");
+    const intakeImports = createIntakeImportService(drizzle(pg, { schema }) as unknown as Parameters<typeof createIntakeImportService>[0]);
+    const generated = await intakeImports.previewDataset(actor, datasetId, "headers");
+    assert.deepEqual(generated.sections[0].questions.map((q) => q.text), ["ID", "Amount", "Active"]);
+    assert.ok(!JSON.stringify(generated).includes("001"));
+    await assert.rejects(intakeImports.previewDataset(foreign, datasetId, "headers"), /unavailable/);
+    await assert.rejects(intakeImports.previewDataset(staff, datasetId, "headers"), /attorney/);
+    await assert.rejects(intakeImports.createDraft(staff, "Unauthorized", generated), /attorney/);
+    const importedId = await intakeImports.createDraft(actor, "Imported draft", generated);
+    const imported = (await pg.query<{ config: unknown; published_config: unknown; law_firm_id: string }>("SELECT config,published_config,law_firm_id FROM intake_templates WHERE id=$1", [importedId])).rows[0];
+    assert.equal(imported.law_firm_id, firm);
+    assert.equal(imported.published_config, null);
+    assert.deepEqual(imported.config, generated);
     let table = await service.table(staff, datasetId);
     assert.equal(table.snapshot?.rowCount, 2);
     assert.equal(table.rows[0].values.c0, "001");
@@ -102,6 +115,8 @@ test("dataset lifecycle: firm isolation, atomic refresh, schema review, stale ed
     release?.();
     await assert.rejects(refresh, /disconnected/);
     table = await service.table(actor, datasetId);
+    await assert.rejects(intakeImports.previewDataset(actor, datasetId, "headers"), /unavailable/);
+    assert.deepEqual((await pg.query<{ config: unknown }>("SELECT config FROM intake_templates WHERE id=$1", [importedId])).rows[0].config, generated);
     assert.equal(table.snapshot, undefined);
     assert.equal(table.rows.length, 0);
     assert.equal((await pg.query("SELECT * FROM dataset_rows")).rows.length, 0);

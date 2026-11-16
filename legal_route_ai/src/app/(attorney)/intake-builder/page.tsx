@@ -23,6 +23,7 @@ export default async function IntakeBuilderPage() {
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader title="Intake Builder" subtitle="Tell Maya what you need and preview your intake in real time." />
+      <Link href="/connections/intake" className={`${buttonClass.secondary} mb-5`}>Generate from Google Sheets / Excel / CSV</Link>
       <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
         <div className="grid content-start gap-4 sm:grid-cols-2">
           {templates.map((t) => {

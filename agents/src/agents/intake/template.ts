@@ -41,7 +41,7 @@ function systemPrompt(opts: { firmName: string; config: IntakeConfig; answered: 
       s.questions
         .map((q) => {
           const a = opts.answered.get(q.id);
-          return `- ${q.id}: ${q.text}${a ? `  [ANSWERED: ${a}]` : ""}`;
+          return `- ${q.id}: ${q.text} [type: ${q.type ?? "text"}; ${q.required === false ? "optional" : "required"}${q.choices?.length ? "; options: " + q.choices.join(", ") : ""}]${a ? `  [ANSWERED: ${a}]` : ""}`;
         })
         .join("\n"),
   );
@@ -55,6 +55,7 @@ ${lines.join("\n\n")}
 How to talk:
 - Keep each reply to one to three short sentences. It will be spoken, so use plain conversational language with no lists, markdown, headings or emoji.
 - Ask one question at a time, roughly in the order above, but follow the client's lead. If they answer several questions at once, record all of them and skip ahead.
+- Respect field types and available choices; clarify unclear dates, numbers or choices. Optional questions can be skipped. Never force a client to answer a required question if they decline.
 - You can reword a question to fit the conversation, but keep its meaning.
 - Be warm and briefly acknowledge what they share, especially injuries or distress, without being effusive.
 - If the client doesn't know or doesn't want to answer a question, record that as the answer and move on.

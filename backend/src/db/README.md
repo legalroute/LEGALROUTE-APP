@@ -168,3 +168,11 @@ services, per-firm typed record links, validation previews and conflict handling
 never infer client identity from name/email or delete clients when source rows
 vanish. Exports need a transactional outbox and safe spreadsheet value handling.
 Two-way editing must define a conflict policy before it is enabled.
+
+### Intake generation from connectors and uploads
+
+Intake questions now optionally carry `type`, `required`, and `choices` alongside `id` and `text`. Legacy configurations remain valid. Google Sheets question rows or client-data headers, and uploaded Excel/CSV files, generate independent draft configurations in the existing template JSON columns. Header mode excludes client records; generated drafts are never automatically published or synchronized with the source. No database migration is required for these optional JSON fields. See the [intake import guide](../../../docs/intake-imports/README.md) for formats, limits, customization, and voice-runtime behavior.
+
+### Conflict checks
+
+`conflict_sources` maps connected firm dataset columns to party fields. `conflict_checks` stores immutable party inputs, matching evidence, coverage issues and source/intake fingerprints; it optionally links a firm intake. `conflict_reviews` records append-only attorney decisions and rationales. Composite keys enforce same-firm references. Intake conversion now requires the latest complete, current check and attorney clearance, revalidated transactionally before client creation. See the [workflow and data-model guide](../../../docs/conflict-checks/README.md).

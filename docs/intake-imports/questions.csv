@@ -1,0 +1,6 @@
+question,section,type,required,choices
+What is your full name?,Contact,text,true,
+What is your email address?,Contact,email,false,
+How should we contact you?,Contact,select,true,Email|Phone|Text
+When did the incident happen?,Incident,date,false,
+Please describe what happened.,Incident,textarea,true,

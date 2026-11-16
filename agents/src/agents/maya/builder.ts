@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { IntakeConfig } from "@legalroute/backend/db/schema";
 import type { ChatTurn } from "../../llm/types.ts";
 import { generateStructured } from "../../llm/structured.ts";
-import { intakeConfigSchema, normalizeConfig } from "@legalroute/backend/services/intake-config";
+import { intakeConfigSchema, editableConfigSchema, normalizeConfig } from "@legalroute/backend/services/intake-config";
 import type { ResolvedSettings } from "@legalroute/backend/contracts/ai";
 
 const builderTurnSchema = z.object({
@@ -20,7 +20,7 @@ The current form, as JSON:
 ${JSON.stringify(config, null, 2)}
 
 How to work:
-- Make exactly the changes the attorney asks for: add, remove, reword, reorder, or move questions and sections. Keep everything else as it is, including existing ids.
+- Make exactly the changes the attorney asks for: add, remove, reword, reorder, or move questions and sections. Keep everything else as it is, including existing ids, field type, required flag and choices. Return null metadata for legacy questions that have none. Supported types are text, textarea, email, phone, number, date, boolean, select and multiselect. Choice questions need distinct nonempty choices.
 - Write questions the way they would be asked aloud: plain, friendly, one thing per question, no legal jargon.
 - Give new sections and questions short snake_case ids that are unique across the form.
 - If the request is unclear, ask one short clarifying question and set changed to false.
@@ -44,5 +44,6 @@ export async function builderTurn(opts: {
     settings: opts.settings,
   });
   const config = result.changed ? normalizeConfig(result.config) : opts.config;
+  if (result.changed) editableConfigSchema.parse(config);
   return { reply: result.reply, changed: result.changed && config.sections.length > 0, config };
 }

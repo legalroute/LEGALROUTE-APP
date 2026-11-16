@@ -147,11 +147,11 @@ export default async function IntakeDetailPage({ params }: PageProps<"/intakes/[
             </p>
             <div className="flex flex-col gap-2">
               {!session.clientId && session.status !== "declined" && (
-                <form action={acceptIntake.bind(null, session.id)}>
-                  <button type="submit" className={`${buttonClass.primary} w-full`}>
+                <div className="space-y-2"><Link href={`/conflicts?intake=${session.id}`} className={`${buttonClass.secondary} w-full`}>Run conflict check</Link><p className="text-xs text-slate-500">Acceptance requires a current, complete check and attorney clearance. Only an attorney can convert this intake.</p><form action={acceptIntake.bind(null, session.id)}>
+                  <button type="submit" disabled={user.role !== "attorney"} className={`${buttonClass.primary} w-full`}>
                     <UserPlus className="size-4" aria-hidden /> Accept &amp; convert to client
                   </button>
-                </form>
+                </form></div>
               )}
               {open && session.status !== "reviewed" && session.status !== "in_progress" && (
                 <form action={markReviewed.bind(null, session.id)}>

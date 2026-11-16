@@ -96,3 +96,11 @@ and covers firm-owned, read-only Google Sheets datasets.
 See the [Google Sheets connector setup](backend/src/connectors/README.md) to enable connections.
 
 For business accounts, follow the [Google Workspace connection setup guide](docs/google-sheets-business-setup/README.md), covering operator configuration, firm IT approval, and customer connection steps.
+
+### Intake forms from Google Sheets, Excel and CSV
+
+Open **Connections → Upload file / Generate intake** to preview question rows or derive questions from client-data column headers, then create and customize an unpublished draft. Excel/CSV uploads work without Google OAuth setup. See the [intake import guide and sample CSV](docs/intake-imports/README.md).
+
+### Conflict checking and intake approval
+
+Run migration `0008_conflict_checks`, then open **Conflict Checks** to map a Google Sheets party registry and run manual checks. Submitted intakes have **Run conflict check**; acceptance requires a current, complete check and documented attorney clearance. See the [setup, sample registry and workflow guide](docs/conflict-checks/README.md).

@@ -3,6 +3,8 @@ import type { IntakeConfig } from "../db/schema.ts";
 
 // Shared between server and browser: shape checks and helpers for intake template configs.
 
+export const fieldTypes = ["text", "textarea", "email", "phone", "number", "date", "boolean", "select", "multiselect"] as const;
+
 export const intakeConfigSchema = z.object({
   sections: z
     .array(
@@ -13,11 +15,30 @@ export const intakeConfigSchema = z.object({
           z.object({
             id: z.string().describe("Short stable id in snake_case, unique across the whole form. Keep existing ids unchanged."),
             text: z.string().describe("The question as it would be asked aloud to a client."),
+            type: z.enum(fieldTypes).nullable(),
+            required: z.boolean().nullable(),
+            choices: z.array(z.string()).nullable(),
           }),
         ),
       }),
     )
     .describe("Every section of the intake, in order."),
+});
+
+// Legacy id/text forms remain valid; AI output uses explicit nullable metadata.
+export const editableConfigSchema = z.object({ sections: z.array(z.object({
+  id: z.string().max(80), title: z.string().trim().min(1).max(200),
+  questions: z.array(z.object({
+    id: z.string().max(80), text: z.string().trim().min(1).max(1000),
+    type: z.enum(fieldTypes).nullish(), required: z.boolean().nullish(),
+    choices: z.array(z.string().trim().min(1).max(200)).max(100).nullish(),
+  })).max(100),
+})).max(40) }).superRefine((config, ctx) => {
+  if (config.sections.reduce((n, s) => n + s.questions.length, 0) > 200)
+    ctx.addIssue({ code: "custom", message: "Use at most 200 questions per form." });
+  for (const section of config.sections) for (const q of section.questions)
+    if ((q.type === "select" || q.type === "multiselect") && (!q.choices?.length || new Set(q.choices).size !== q.choices.length))
+      ctx.addIssue({ code: "custom", message: "Choice questions need distinct, nonempty options." });
 });
 
 export function allQuestions(config: IntakeConfig) {
@@ -57,7 +78,7 @@ export function normalizeConfig(config: IntakeConfig): IntakeConfig {
         title: s.title.trim(),
         questions: s.questions
           .filter((q) => q.text.trim())
-          .map((q) => ({ id: unique(slugify(q.id || q.text), seenQuestions), text: q.text.trim() })),
+          .map((q) => ({ ...q, id: unique(slugify(q.id || q.text), seenQuestions), text: q.text.trim() })),
       })),
   };
 }

@@ -7,7 +7,7 @@ import { z } from "zod";
 import { db, intakeTemplates, lawFirms, type IntakeConfig } from "@/db";
 import { requireUser, type CurrentUser } from "@/lib/auth";
 import { logActivity } from "@/lib/firm";
-import { normalizeConfig, STARTER_PERSONAL_INJURY } from "@/lib/intake-config";
+import { normalizeConfig, editableConfigSchema, STARTER_PERSONAL_INJURY } from "@/lib/intake-config";
 import { LlmError } from "@/lib/llm/types";
 import { builderTurn } from "@/lib/maya/builder";
 import { loadChat, saveChatMessage, toChatDto, toTurns, type ChatMessageDto } from "@/lib/maya/history";
@@ -93,22 +93,12 @@ export async function sendBuilderMessage(templateId: string, text: string): Prom
   }
 }
 
-const configSchema = z.object({
-  sections: z.array(
-    z.object({
-      id: z.string().max(80),
-      title: z.string().max(200),
-      questions: z.array(z.object({ id: z.string().max(80), text: z.string().max(1000) })).max(100),
-    }),
-  ).max(40),
-});
-
 // Direct edits from the preview panel (rename, add, remove, reorder).
 export async function saveTemplateConfig(templateId: string, config: IntakeConfig): Promise<{ error?: string; config?: IntakeConfig }> {
   const user = await requireUser();
   const template = await loadTemplate(user, templateId);
   if (!template) return { error: "This intake template no longer exists." };
-  const parsed = configSchema.safeParse(config);
+  const parsed = editableConfigSchema.safeParse(config);
   if (!parsed.success) return { error: "That change couldn't be saved." };
   const normalized = normalizeConfig(parsed.data);
   await db.update(intakeTemplates).set({ config: normalized }).where(eq(intakeTemplates.id, template.id));
@@ -132,6 +122,8 @@ export async function publishTemplate(templateId: string) {
   const user = await requireUser();
   const template = await loadTemplate(user, templateId);
   if (!template) return { error: "This intake template no longer exists." };
+  const checked = editableConfigSchema.safeParse(template.config);
+  if (!checked.success) return { error: checked.error.issues[0]?.message ?? "Check your questions." };
   if (!template.config.sections.some((s) => s.questions.length)) return { error: "Add at least one question before publishing." };
   await db.update(intakeTemplates).set({ publishedConfig: template.config, publishedAt: new Date() }).where(eq(intakeTemplates.id, template.id));
   if (!user.firm.defaultTemplateId) await db.update(lawFirms).set({ defaultTemplateId: template.id }).where(eq(lawFirms.id, user.firm.id));

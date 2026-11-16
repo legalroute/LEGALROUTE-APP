@@ -138,3 +138,7 @@ reads. Real consent/refresh calls must additionally be verified with a configure
 Google test account; no credentials are bundled with the app.
 
 For a business-friendly walkthrough, see [Google Workspace business-account setup](../../../docs/google-sheets-business-setup/README.md). It separates one-time operator setup from law-firm account connection and IT approval.
+
+## Generate intake drafts
+
+Connected firm tables can now supply question definitions or column headings for a new intake draft. Uploading `.xlsx` or `.csv` is also available without Google configuration. See the [intake generation guide](../../../docs/intake-imports/README.md). Drafts are independent of their source and require explicit publication.

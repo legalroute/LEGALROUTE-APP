@@ -3,8 +3,9 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { clients, db, intakeResponses, intakeSessions } from "@/db";
+import { db, intakeResponses, intakeSessions } from "@/db";
 import { requireUser, type CurrentUser } from "@/lib/auth";
+import { conflictService, ConflictError } from "@legalroute/backend/services/conflicts/service";
 import { sendEmail } from "@/lib/email";
 import { logActivity } from "@/lib/firm";
 
@@ -33,27 +34,16 @@ export async function acceptIntake(sessionId: string) {
   if (!session) redirect("/intakes");
   if (session.clientId) redirect(`/clients/${session.clientId}`);
 
-  const responses = await db.select().from(intakeResponses).where(eq(intakeResponses.sessionId, session.id));
-  const email = session.clientEmail ?? pickAnswer(responses, "email");
-  const [client] = await db
-    .insert(clients)
-    .values({
-      lawFirmId: user.firm.id,
-      name: session.clientName ?? pickAnswer(responses, "full_name", "name") ?? "Unnamed client",
-      email: email && /\S+@\S+/.test(email) ? email : null,
-      phone: pickAnswer(responses, "phone"),
-      matterType: session.matterType,
-      status: "qualified",
-    })
-    .returning();
-  await db
-    .update(intakeSessions)
-    .set({ clientId: client.id, status: "completed", reviewedAt: new Date() })
-    .where(eq(intakeSessions.id, session.id));
-  await logActivity(user.firm.id, "client", `${client.name} converted to a client from intake`, client.id);
+  let clientId: string;
+  try { clientId = await conflictService.accept(user, session.id); }
+  catch (e) {
+    if (!(e instanceof ConflictError)) throw e;
+    redirect(`/conflicts?intake=${session.id}&error=clearance`);
+  }
+  await logActivity(user.firm.id, "client", "Client converted from intake after attorney conflict clearance", clientId);
   refresh(session.id);
   revalidatePath("/clients");
-  redirect(`/clients/${client.id}`);
+  redirect(`/clients/${clientId}`);
 }
 
 export async function markReviewed(sessionId: string) {

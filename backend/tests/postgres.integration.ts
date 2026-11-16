@@ -91,6 +91,24 @@ test("PostgreSQL: migrations, magic-link/session lifecycle, and simultaneous sch
     releaseRead?.(); await firstRefresh;
     pause = false;
     assert.equal((await datasetService.table(actor, datasetId)).rows[0].values.c1, 3);
+    const { intakeImportService } = await import("../src/services/intake-import-service.ts");
+    const generatedIntake = await intakeImportService.previewDataset(actor, datasetId, "headers");
+    const importedTemplateId = await intakeImportService.createDraft(actor, "Imported intake HTTP test", generatedIntake);
+    assert.equal(generatedIntake.sections[0].questions[0].required, false);
+    const { conflictService } = await import("../src/services/conflicts/service.ts");
+    const { eq } = await import("drizzle-orm");
+    // A dedicated cached registry fixture avoids calling any real Google account.
+    const [registry] = await data.db.insert(data.datasets).values({ lawFirmId: actor.firm.id, connectionId: savedConnections[0].id, name: "Conflict party registry", spreadsheetId: "mock_registry", sheetId: 0, sourceTitle: "Mock", sheetTitle: "Parties" }).returning();
+    const [registrySnapshot] = await data.db.insert(data.datasetSnapshots).values({ lawFirmId: actor.firm.id, datasetId: registry.id, schemaHash: "test", rowCount: 1, columns: [{ id: "name", header: "Name", label: "Name", type: "text" }, { id: "role", header: "Role", label: "Role", type: "text" }] }).returning();
+    await data.db.insert(data.datasetRows).values({ lawFirmId: actor.firm.id, snapshotId: registrySnapshot.id, position: 1, raw: { name: "Existing Defendant", role: "defendant" }, values: { name: "Existing Defendant", role: "defendant" } });
+    await conflictService.configure(actor, registry.id, { name: "name", role: "role" });
+    const [conflictIntake] = await data.db.insert(data.intakeSessions).values({ lawFirmId: actor.firm.id, clientName: "Prospective Conflict Client", status: "pending_review" }).returning();
+    await assert.rejects(conflictService.accept(actor, conflictIntake.id), /conflict check/);
+    const conflictCheckId = await conflictService.run(actor, { intakeId: conflictIntake.id, subjects: [{ name: "Prospective Conflict Client", role: "client" }, { name: "Existing Defendant", role: "opposing" }], opposingComplete: true });
+    await conflictService.review(actor, conflictCheckId, { decision: "clear", notes: "Test attorney reviewed the identities and recorded a decision." });
+    const convertedIds = await Promise.all([conflictService.accept(actor, conflictIntake.id), conflictService.accept(actor, conflictIntake.id)]);
+    assert.equal(convertedIds[0], convertedIds[1], "Concurrent approval must create only one client");
+    assert.equal((await data.db.select().from(data.clients).where(eq(data.clients.id, convertedIds[0]))).length, 1);
     if (process.env.TEST_WEB === "1") {
       // Smoke-test the built Next.js adapter against this same isolated database.
       const portFinder = createServer();
@@ -130,6 +148,26 @@ test("PostgreSQL: migrations, magic-link/session lifecycle, and simultaneous sch
         const connectionsPage = await fetch(`${base}/connections`, { headers: { cookie: `lr_session=${session.token}` } });
         assert.equal(connectionsPage.status, 200);
         assert.ok((await connectionsPage.text()).includes("Add a table"), "Connections page should show the connected account builder");
+        const conflictsPage = await fetch(`${base}/conflicts?check=${conflictCheckId}`, { headers: { cookie: `lr_session=${session.token}` } });
+        assert.equal(conflictsPage.status, 200, logs);
+        const conflictsHtml = await conflictsPage.text();
+        assert.ok(conflictsHtml.includes("Conflict Checks"));
+        assert.ok(conflictsHtml.includes("Existing Defendant"));
+        assert.ok(conflictsHtml.includes("Review history"));
+        const linkedCheckPage = await fetch(`${base}/conflicts?intake=${conflictIntake.id}`, { headers: { cookie: `lr_session=${session.token}` } });
+        assert.equal(linkedCheckPage.status, 200, logs);
+        const importPage = await fetch(`${base}/connections/intake`, { headers: { cookie: `lr_session=${session.token}` } });
+        assert.equal(importPage.status, 200, logs);
+        const importHtml = await importPage.text();
+        assert.ok(importHtml.includes("Generate an intake form"));
+        assert.ok(importHtml.includes("Referrals test dataset"));
+        assert.ok(importHtml.includes("Preview questions"));
+        const draftPage = await fetch(`${base}/intake-builder/${importedTemplateId}`, { headers: { cookie: `lr_session=${session.token}` } });
+        assert.equal(draftPage.status, 200, logs);
+        const draftHtml = await draftPage.text();
+        assert.ok(draftHtml.includes("Imported intake HTTP test"));
+        assert.ok(draftHtml.includes("Move up"));
+        assert.ok(draftHtml.includes("Required"));
         const datasetPage = await fetch(`${base}/datasets/${datasetId}`, { headers: { cookie: `lr_session=${session.token}` } });
         assert.equal(datasetPage.status, 200);
         const datasetHtml = await datasetPage.text();
@@ -139,7 +177,7 @@ test("PostgreSQL: migrations, magic-link/session lifecycle, and simultaneous sch
         assert.equal(oauth.status, 307);
         assert.equal(new URL(oauth.headers.get("location")!).hostname, "accounts.google.com");
         const rejected = await fetch(`${base}/api/connectors/google-sheets/callback?code=fake&state=wrong`, { headers: { cookie: `lr_session=${session.token}; lr_sheets_oauth=different` }, redirect: "manual" });
-        assert.match(rejected.headers.get("location") ?? "", /error=authorization/);
+        assert.match(rejected.headers.get("location") ?? "", /error=oauth_state/);
       } finally {
         if (server.exitCode === null) { server.kill("SIGTERM"); await once(server, "exit"); }
       }
