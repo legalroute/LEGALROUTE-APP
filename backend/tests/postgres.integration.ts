@@ -1,3 +1,6 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:net";
@@ -119,9 +122,10 @@ test("PostgreSQL: migrations, magic-link/session lifecycle, and simultaneous sch
       const port = address.port;
       await new Promise<void>((resolve) => portFinder.close(() => resolve()));
       const dev = process.env.TEST_WEB_MODE === "development";
+      const documentTestDir = await mkdtemp(path.join(tmpdir(), "legalroute-document-test-"));
       const server = spawn(process.execPath, [fileURLToPath(new URL("../../node_modules/next/dist/bin/next", import.meta.url)), dev ? "dev" : "start", "--hostname", "127.0.0.1", "--port", String(port)], {
         cwd: fileURLToPath(new URL("../../legal_route_ai/", import.meta.url)),
-        env: { ...process.env, NODE_ENV: dev ? "development" : "production", NEXT_TELEMETRY_DISABLED: "1" },
+        env: { ...process.env, NODE_ENV: dev ? "development" : "production", NEXT_TELEMETRY_DISABLED: "1", DOCUMENT_UPLOADS_DIR: documentTestDir, STRIPE_SECRET_KEY: "sk_test_http_fixture", STRIPE_WEBHOOK_SECRET: "whsec_http_fixture" },
         stdio: ["ignore", "pipe", "pipe"],
       });
       let logs = "";
@@ -148,6 +152,38 @@ test("PostgreSQL: migrations, magic-link/session lifecycle, and simultaneous sch
         const connectionsPage = await fetch(`${base}/connections`, { headers: { cookie: `lr_session=${session.token}` } });
         assert.equal(connectionsPage.status, 200);
         assert.ok((await connectionsPage.text()).includes("Add a table"), "Connections page should show the connected account builder");
+        const paymentsPage = await fetch(`${base}/payments`, { headers: { cookie: `lr_session=${session.token}` } });
+        assert.equal(paymentsPage.status, 200, logs);
+        assert.ok((await paymentsPage.text()).includes("Create test payment request"));
+        const returnPage = await fetch(`${base}/payment-result?result=returned`);
+        assert.equal(returnPage.status, 200);
+        const invalidWebhook = await fetch(`${base}/api/payments/stripe/webhook`, { method: "POST", headers: { "stripe-signature": "invalid" }, body: "{}" });
+        assert.equal(invalidWebhook.status, 400);
+        const { default: Stripe } = await import("stripe");
+        const ignoredPayload = JSON.stringify({ id: "evt_http_ignored", object: "event", type: "unhandled", livemode: false, data: { object: {} } });
+        const ignoredSignature = Stripe.webhooks.generateTestHeaderString({ payload: ignoredPayload, secret: "whsec_http_fixture" });
+        const signedWebhook = await fetch(`${base}/api/payments/stripe/webhook`, { method: "POST", headers: { "stripe-signature": ignoredSignature }, body: ignoredPayload });
+        assert.equal(signedWebhook.status, 200);
+        const uploadForm = () => { const form = new FormData(); form.set("file", new File(["LegalRoute upload test"], "test-document.txt", { type: "text/plain" })); return form; };
+        const uploadUrl = `${base}/api/clients/${convertedIds[0]}/documents`;
+        const anonymousUpload = await fetch(uploadUrl, { method: "POST", body: uploadForm() });
+        assert.equal(anonymousUpload.status, 401);
+        const foreignOriginUpload = await fetch(uploadUrl, { method: "POST", headers: { cookie: `lr_session=${session.token}`, origin: "https://other.example" }, body: uploadForm() });
+        assert.equal(foreignOriginUpload.status, 403);
+        const uploaded = await fetch(uploadUrl, { method: "POST", headers: { cookie: `lr_session=${session.token}`, origin: base }, body: uploadForm() });
+        assert.equal(uploaded.status, 200, await uploaded.text());
+        const [storedDocument] = await data.db.select().from(data.documents).where(eq(data.documents.clientId, convertedIds[0]));
+        assert.ok(storedDocument.filePath);
+        const downloaded = await fetch(`${base}/api/documents/${storedDocument.id}`, { headers: { cookie: `lr_session=${session.token}` } });
+        assert.equal(downloaded.status, 200);
+        assert.equal(await downloaded.text(), "LegalRoute upload test");
+        const anonymousDownload = await fetch(`${base}/api/documents/${storedDocument.id}`);
+        assert.equal(anonymousDownload.status, 401);
+        const documentPage = await fetch(`${base}/clients/${convertedIds[0]}?tab=documents`, { headers: { cookie: `lr_session=${session.token}` } });
+        assert.equal(documentPage.status, 200);
+        const documentHtml = await documentPage.text();
+        assert.ok(documentHtml.includes("Stored documents (1)"));
+        assert.ok(documentHtml.includes("Upload document"));
         const conflictsPage = await fetch(`${base}/conflicts?check=${conflictCheckId}`, { headers: { cookie: `lr_session=${session.token}` } });
         assert.equal(conflictsPage.status, 200, logs);
         const conflictsHtml = await conflictsPage.text();
@@ -180,6 +216,7 @@ test("PostgreSQL: migrations, magic-link/session lifecycle, and simultaneous sch
         assert.match(rejected.headers.get("location") ?? "", /error=oauth_state/);
       } finally {
         if (server.exitCode === null) { server.kill("SIGTERM"); await once(server, "exit"); }
+        await rm(documentTestDir, { recursive: true, force: true });
       }
     }
     await auth.revokeSession(session.token);

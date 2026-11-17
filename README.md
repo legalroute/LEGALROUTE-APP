@@ -104,3 +104,7 @@ Open **Connections → Upload file / Generate intake** to preview question rows 
 ### Conflict checking and intake approval
 
 Run migration `0008_conflict_checks`, then open **Conflict Checks** to map a Google Sheets party registry and run manual checks. Submitted intakes have **Run conflict check**; acceptance requires a current, complete check and documented attorney clearance. See the [setup, sample registry and workflow guide](docs/conflict-checks/README.md).
+
+### Payments and stored documents
+
+**Payments** and each client's **Payments** tab support one-time Stripe test Checkout requests with signed-webhook status updates. In client **Documents**, use **Stored documents → Upload document** to store files up to 20 MB. See [local Stripe setup, document storage and Azure deployment notes](docs/payments/README.md).

@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, FilePenLine, Home, Inbox, Plug, Settings, Users } from "lucide-react";
+import { CalendarDays, CreditCard, FilePenLine, Home, Inbox, Plug, Settings, Users } from "lucide-react";
 
 const NAV = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/intakes", label: "Intakes", icon: Inbox },
   { href: "/intake-builder", label: "Intake Builder", icon: FilePenLine },
+  { href: "/payments", label: "Payments", icon: CreditCard },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/conflicts", label: "Conflict Checks", icon: Users },
   { href: "/connections", label: "Connections", icon: Plug },

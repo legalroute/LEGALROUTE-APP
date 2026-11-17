@@ -176,3 +176,7 @@ Intake questions now optionally carry `type`, `required`, and `choices` alongsid
 ### Conflict checks
 
 `conflict_sources` maps connected firm dataset columns to party fields. `conflict_checks` stores immutable party inputs, matching evidence, coverage issues and source/intake fingerprints; it optionally links a firm intake. `conflict_reviews` records append-only attorney decisions and rationales. Composite keys enforce same-firm references. Intake conversion now requires the latest complete, current check and attorney clearance, revalidated transactionally before client creation. See the [workflow and data-model guide](../../../docs/conflict-checks/README.md).
+
+### Stripe test payment requests
+
+`payment_requests` stores firm-scoped client requests, integer USD cents, immutable request identity, Checkout reference and payment status. Composite foreign keys bind clients and creators to the same firm. `payment_events` deduplicates signed Stripe event IDs; amount, client, firm and session references are validated before updating payment state. Browser redirects never determine payment success. See the [payments guide](../../../docs/payments/README.md) for test-mode setup and production limitations.

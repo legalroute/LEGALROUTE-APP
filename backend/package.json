@@ -21,6 +21,7 @@
     "exceljs": "^4.4.0",
     "express": "^5.1.0",
     "postgres": "^3.4.9",
+    "stripe": "^23.1.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -156,6 +157,11 @@
       "types": "./src/services/conflicts/service.ts",
       "development": "./src/services/conflicts/service.ts",
       "default": "./dist/services/conflicts/service.js"
+    },
+    "./services/payments/service": {
+      "types": "./src/services/payments/service.ts",
+      "development": "./src/services/payments/service.ts",
+      "default": "./dist/services/payments/service.js"
     }
   }
 }

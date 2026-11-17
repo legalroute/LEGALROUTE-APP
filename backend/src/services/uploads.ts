@@ -1,7 +1,7 @@
 import path from "node:path";
 
 // Client documents are kept on local disk (gitignored): uploads/<firmId>/<clientId>/<file>.
-export const UPLOADS_DIR = path.join(process.cwd(), "uploads");
+export const UPLOADS_DIR = path.resolve(process.env.DOCUMENT_UPLOADS_DIR || path.join(process.cwd(), "uploads"));
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 // Resolves a stored relative path, refusing anything that escapes the uploads folder.

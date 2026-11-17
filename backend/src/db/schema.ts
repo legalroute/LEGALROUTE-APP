@@ -511,3 +511,27 @@ export const conflictReviews = pgTable("conflict_reviews", {
   notes: text("notes").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [foreignKey({ columns: [t.checkId, t.lawFirmId], foreignColumns: [conflictChecks.id, conflictChecks.lawFirmId] }), foreignKey({ columns: [t.reviewerId, t.lawFirmId], foreignColumns: [users.id, users.lawFirmId] }), index("conflict_review_check").on(t.checkId, t.createdAt)]);
+
+// Test-mode Stripe Checkout requests; card details remain with Stripe.
+export const paymentRequests = pgTable("payment_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  lawFirmId: uuid("law_firm_id").notNull(),
+  clientId: uuid("client_id").notNull(),
+  createdBy: uuid("created_by").notNull(),
+  requestKey: uuid("request_key").notNull(),
+  description: text("description").notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  currency: text("currency").notNull().default("usd"),
+  status: text("status").$type<"creating" | "pending" | "paid" | "expired" | "failed">().notNull().default("creating"),
+  stripeSessionId: text("stripe_session_id"),
+  checkoutUrl: text("checkout_url"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  paidAt: timestamp("paid_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("payment_request_key").on(t.lawFirmId, t.requestKey), uniqueIndex("payment_stripe_session").on(t.stripeSessionId), index("payment_firm_created").on(t.lawFirmId, t.createdAt), foreignKey({ columns: [t.clientId, t.lawFirmId], foreignColumns: [clients.id, clients.lawFirmId] }), foreignKey({ columns: [t.createdBy, t.lawFirmId], foreignColumns: [users.id, users.lawFirmId] }), check("payment_amount_positive", sql`${t.amountCents} between 50 and 99999999`), check("payment_currency_usd", sql`${t.currency} = 'usd'`)]);
+export const paymentEvents = pgTable("payment_events", {
+  id: text("id").primaryKey(),
+  requestId: uuid("request_id").notNull().references(() => paymentRequests.id),
+  type: text("type").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

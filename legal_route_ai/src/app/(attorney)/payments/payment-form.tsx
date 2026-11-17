@@ -1,0 +1,13 @@
+"use client";
+import { useActionState, useState } from "react";
+import { buttonClass, inputClass } from "@/components/ui";
+import { createPayment, type PaymentState } from "./actions";
+export function PaymentForm({ clients, requestKey, clientId }: { clients: { id: string; name: string }[]; requestKey: string; clientId?: string }) {
+  const [key, setKey] = useState(requestKey);
+  const [state, action, pending] = useActionState(async (previous: PaymentState, form: FormData) => { const result = await createPayment(previous, form); if (result.done) setKey(crypto.randomUUID()); return result; }, {});
+  return <form action={action} className="space-y-3"><fieldset disabled={pending} className="space-y-3"><input type="hidden" name="requestKey" value={key} /><label className="block text-sm">Client<select required name="clientId" defaultValue={clientId ?? ""} className={inputClass}><option value="">Choose a client</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label className="block text-sm">Description<input required name="description" maxLength={200} placeholder="e.g. Consultation fee" className={inputClass} /></label><label className="block text-sm">Amount (USD)<input required name="amount" type="number" min="0.50" max="999999.99" step="0.01" placeholder="100.00" className={inputClass} /></label><button disabled={pending} className={buttonClass.primary}>{pending ? "Creating…" : state.done ? "Create another test payment request" : "Create test payment request"}</button></fieldset>{state.error && <p role="alert" className="text-sm text-red-700">{state.error}</p>}{state.done && <p role="status" className="text-sm text-green-800">{state.done}</p>}{state.link && <a href={state.link} target="_blank" rel="noreferrer" className={buttonClass.secondary}>Open Stripe test Checkout</a>}</form>;
+}
+export function RetryPayment({ id, clientId, description, cents }: { id: string; clientId: string; description: string; cents: number }) {
+  const [state, action, pending] = useActionState(createPayment, {});
+  return <form action={action}><input type="hidden" name="requestKey" value={id} /><input type="hidden" name="clientId" value={clientId} /><input type="hidden" name="description" value={description} /><input type="hidden" name="amount" value={(cents / 100).toFixed(2)} /><button disabled={pending} className={buttonClass.secondary}>Retry Checkout creation</button>{state.error && <p role="alert" className="text-sm text-red-700">{state.error}</p>}{state.done && <p role="status" className="text-sm text-green-800">{state.done}</p>}</form>;
+}

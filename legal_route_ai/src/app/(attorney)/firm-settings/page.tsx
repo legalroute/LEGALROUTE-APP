@@ -70,11 +70,9 @@ export default async function FirmSettingsPage({ searchParams }: PageProps<"/fir
               <span className="grid size-12 place-items-center rounded-full bg-slate-100 text-slate-500">
                 <CreditCard className="size-6" aria-hidden />
               </span>
-              <h2 className="text-lg font-semibold">Billing is coming soon</h2>
-              <p className="max-w-md text-sm text-slate-500">Connect Stripe to collect retainers and send payment links from client workspaces.</p>
-              <button type="button" disabled className={buttonClass.secondary}>
-                Connect Stripe
-              </button>
+              <h2 className="text-lg font-semibold">Stripe payments</h2>
+              <p className="max-w-md text-sm text-slate-500">Create client payment requests with Stripe test Checkout and verified payment status.</p>
+              <Link href="/payments" className={buttonClass.secondary}>Manage payments</Link>
             </div>
           )}
           {tab === "appearance" && (

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarClock, ChevronLeft, CreditCard, Download, FileText, Trash2 } from "lucide-react";
+import { CalendarClock, ChevronLeft, Download, FileText, Trash2 } from "lucide-react";
 import { activities, clients, db, documents, intakeResponses, intakeSessions, tasks } from "@/db";
 import { Avatar, CLIENT_STATUS, Card, CardHeader, EmptyState, INTAKE_STATUS, Pill, buttonClass, inputClass } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
@@ -11,6 +11,8 @@ import { loadChat, toChatDto } from "@/lib/maya/history";
 import { addTask, deleteDocument, deleteTask, requestDocument, toggleTask } from "../actions";
 import { ClientChat } from "./client-chat";
 import { OverviewForm } from "./overview-form";
+import { DocumentUploadButton } from "./document-upload-button";
+import { PaymentPanel } from "../../payments/payment-panel";
 import { UploadForm } from "./upload-form";
 
 export const metadata: Metadata = { title: "Client — LegalRoute" };
@@ -83,20 +85,7 @@ export default async function ClientWorkspacePage({ params, searchParams }: Page
       {tab === "documents" && <DocumentsTab clientId={client.id} />}
       {tab === "activity" && <ActivityTab clientId={client.id} />}
       {tab === "tasks" && <TasksTab clientId={client.id} />}
-      {tab === "payments" && (
-        <Card className="flex flex-col items-center gap-3 px-6 py-14 text-center">
-          <span className="grid size-12 place-items-center rounded-full bg-slate-100 text-slate-500">
-            <CreditCard className="size-6" aria-hidden />
-          </span>
-          <h2 className="text-lg font-semibold">Payments are coming soon</h2>
-          <p className="max-w-md text-sm text-slate-500">
-            Retainers, invoices and payment links for {client.name} will appear here once Stripe billing is connected in Settings → Billing.
-          </p>
-          <button type="button" disabled className={buttonClass.secondary}>
-            Create payment link
-          </button>
-        </Card>
-      )}
+      {tab === "payments" && <PaymentPanel user={user} clientId={client.id} />}
     </div>
   );
 }
@@ -155,7 +144,7 @@ async function DocumentsTab({ clientId }: { clientId: string }) {
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="flex flex-col gap-6">
         <Card>
-          <CardHeader title={`Received (${received.length})`} />
+          <CardHeader title={`Stored documents (${received.length})`} actions={<DocumentUploadButton clientId={clientId} requests={requested.map((d) => ({ id: d.id, name: d.name }))} />} />
           {received.length === 0 ? (
             <EmptyState>No documents yet.</EmptyState>
           ) : (
