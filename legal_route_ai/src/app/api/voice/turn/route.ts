@@ -1,5 +1,5 @@
 import { asc, eq } from "drizzle-orm";
-import { db, voiceConversations, voiceMessages } from "@/db";
+import { db, intakeSessions, voiceConversations, voiceMessages } from "@/db";
 import { DeepgramError, transcribe } from "@/lib/deepgram";
 import { generateReply, LlmError, type ChatTurn } from "@/lib/llm";
 import { getSettings } from "@/lib/settings";
@@ -24,6 +24,8 @@ export async function POST(request: Request) {
   }
   if (audio.size > MAX_AUDIO_BYTES) return fail(413, "That recording is too long. Please keep messages shorter.");
 
+  const [firmSession] = await db.select({ id: intakeSessions.id }).from(intakeSessions).where(eq(intakeSessions.voiceConversationId, conversationId));
+  if (firmSession) return fail(403, "Use your firm intake link to continue this conversation.");
   const [conversation] = await db.select().from(voiceConversations).where(eq(voiceConversations.id, conversationId));
   if (!conversation) return fail(404, "Conversation not found. Start a new intake.");
   if (conversation.completedAt) return fail(409, "This intake is already complete.");

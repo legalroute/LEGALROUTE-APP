@@ -19,6 +19,9 @@ export type VoiceState = {
 
 export type StartResponse = VoiceState & {
   conversationId: string;
+  accessToken?: string;
+  resumeUrl?: string;
+  messages?: VoiceMessageDto[];
   message: VoiceMessageDto;
   audio: string | null; // base64 MP3
   warning?: string;

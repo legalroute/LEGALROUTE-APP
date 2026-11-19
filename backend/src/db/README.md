@@ -180,3 +180,7 @@ Intake questions now optionally carry `type`, `required`, and `choices` alongsid
 ### Stripe test payment requests
 
 `payment_requests` stores firm-scoped client requests, integer USD cents, immutable request identity, Checkout reference and payment status. Composite foreign keys bind clients and creators to the same firm. `payment_events` deduplicates signed Stripe event IDs; amount, client, firm and session references are validated before updating payment state. Browser redirects never determine payment success. See the [payments guide](../../../docs/payments/README.md) for test-mode setup and production limitations.
+
+### Private intake session links
+
+`intake_access` binds a hash-only, expiring bearer credential to an intake and its firm through a composite foreign key. New recordings issue a private resume link; start/resume and recording-turn APIs validate firm, credential, session and conversation. Attorneys/admins can replace or revoke access. Completed or otherwise closed intakes cannot resume. See the [private intake links guide](../../../docs/private-intake-links/README.md) for browser flow, optional Resend delivery and security boundaries.

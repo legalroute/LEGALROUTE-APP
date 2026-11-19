@@ -2,8 +2,8 @@
 
 ## Included in this version
 
-- **Payments** navigation page with client-specific one-time USD requests.
-- The same requests in each client's **Payments** tab, and a link from **Settings → Billing**.
+- **Settings → Billing** dashboard with client-specific one-time USD requests.
+- The same requests in each client's **Payments** tab, and the same shared implementation as **Settings → Billing**.
 - Stripe-hosted test Checkout. Card information stays with Stripe; LegalRoute does not collect card numbers.
 - Verified webhook updates, duplicate-event protection, request idempotency and amount/client/firm checks.
 - A public return page that never treats a browser redirect as proof of payment.
@@ -45,9 +45,9 @@ This is a **test-only integration**, using one operator-configured Stripe test a
    npm run dev
    ```
 
-6. Sign in at `http://localhost:3000`, open **Payments**, choose a client, enter a description and USD amount, and click **Create test payment request**. An attorney or admin account is required to create requests. Firm members can view their firm's requests. The latest 100 requests are shown.
+6. Sign in at `http://localhost:3000`, open **Settings → Billing**, choose a client, enter a description and USD amount, and click **Create test payment request**. An attorney or admin account is required to create requests. Firm members can view their firm's requests. The latest 100 requests are shown.
 7. Open the returned Stripe test Checkout link. Use Stripe's test card `4242 4242 4242 4242`, any future expiry, and any three-digit CVC. Use fictional test customer information, not a real card. See [Stripe testing](https://docs.stripe.com/testing).
-8. Complete Checkout, keep the listener running, and refresh Payments. The verified webhook changes the status to **paid** and records a client activity. Returning to LegalRoute without a valid webhook never marks a request paid. The public return page does not require a LegalRoute login or expose payment records.
+8. Complete Checkout, keep the listener running, and refresh Billing. The verified webhook changes the status to **paid** and records a client activity. Returning to LegalRoute without a valid webhook never marks a request paid. The public return page does not require a LegalRoute login or expose payment records.
 
 Stripe-hosted session links expire; these are not reusable Stripe Payment Links products. No invitation email, invoice or receipt is sent by LegalRoute. Stripe's own account-level email settings are separate. An unfinished create has a retry action that reuses the exact request identity. After 23 hours, creation retries are blocked to avoid reusing an idempotency key after Stripe's retention window; inspect Stripe before creating another request. Paid is terminal in this MVP: refunds, disputes, partial payments, tax, subscriptions, trust accounting and reconciliation beyond Checkout are not implemented.
 
@@ -80,3 +80,5 @@ On Azure, point that variable at a persistent mounted volume and back it up alon
 Migration `0009_stripe_test_payments` creates `payment_requests` (firm/client/user, cents, description, idempotency key, Checkout reference, state/times) and `payment_events` (deduplication IDs associated with their request). Card data and Stripe API secrets are not stored in these tables.
 
 `backend/src/services/payments/service.ts` handles business logic; Next.js actions/routes handle auth, forms and raw signed webhook payloads. Tests use a mocked Stripe gateway, real Stripe signature generation/verification, PGlite migration coverage, and an isolated PostgreSQL/HTTP test. Actual Checkout through your Stripe account requires the private setup above; automated tests do not charge or call a real Stripe account.
+
+The former `/payments` address redirects to `/firm-settings?tab=billing`. Client-specific Payments tabs remain available.

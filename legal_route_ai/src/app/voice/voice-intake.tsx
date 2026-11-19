@@ -72,6 +72,7 @@ export function VoiceIntake({
   startUrl = "/api/voice/start",
   turnUrl = "/api/voice/turn",
   startBody,
+  newIntakeUrl,
   showProgress = true,
   description = DEFAULT_DESCRIPTION,
   completeDetail = DEFAULT_COMPLETE_DETAIL,
@@ -83,6 +84,7 @@ export function VoiceIntake({
   startUrl?: string;
   turnUrl?: string;
   startBody?: Record<string, string>;
+  newIntakeUrl?: string;
   showProgress?: boolean;
   description?: string;
   completeDetail?: string;
@@ -93,6 +95,8 @@ export function VoiceIntake({
   const [phase, setPhaseState] = useState<Phase>("consent");
   const [consented, setConsented] = useState(false);
   const [hearing, setHearing] = useState(false);
+  const [resumeUrl, setResumeUrl] = useState<string>();
+  const accessTokenRef = useRef<string | undefined>(undefined);
   const [conversationId, setConversationId] = useState<string>();
   const [messages, setMessages] = useState<VoiceMessageDto[]>([]);
   const [percent, setPercent] = useState(0);
@@ -353,7 +357,9 @@ export function VoiceIntake({
       completeRef.current = false;
       conversationRef.current = data.conversationId;
       setConversationId(data.conversationId);
-      setMessages([data.message]);
+      setMessages(data.messages ?? [data.message]);
+      accessTokenRef.current = data.accessToken;
+      setResumeUrl(data.resumeUrl);
       setPercent(data.percent);
       setClientName(data.clientName);
       setNotice(data.warning);
@@ -378,7 +384,7 @@ export function VoiceIntake({
 
     let gotAudio = false;
     try {
-      const res = await fetch(turnUrl, { method: "POST", body: form });
+      const res = await fetch(turnUrl, { method: "POST", body: form, headers: accessTokenRef.current ? { Authorization: `Bearer ${accessTokenRef.current}` } : undefined });
       if (res.status === 422) {
         // Nothing intelligible (noise, a cough): quietly keep listening.
         if (conversationRef.current === id) afterScribe();
@@ -461,6 +467,9 @@ export function VoiceIntake({
   }
 
   function newIntake() {
+    if (newIntakeUrl) { window.location.assign(newIntakeUrl); return; }
+    accessTokenRef.current = undefined;
+    setResumeUrl(undefined);
     endSession();
     conversationRef.current = null;
     completeRef.current = false;
@@ -575,6 +584,7 @@ export function VoiceIntake({
 
         {/* Right: conversation */}
         <div className="flex min-h-0 flex-col px-4 py-5 sm:px-6">
+          {resumeUrl && phase !== "complete" && <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm"><p className="font-medium">Your private resume link</p><p className="mb-2 text-xs">Expires 7 days after issue unless the firm replaces or revokes it. Keep it private.</p><a href={resumeUrl} className="mr-3 text-orange-800 underline">Open saved intake</a><button type="button" className="font-semibold text-orange-800" onClick={async () => { try { await navigator.clipboard.writeText(new URL(resumeUrl, window.location.origin).href); setNotice("Private intake link copied."); } catch { setNotice("Use Open saved intake and copy its address."); } }}>Copy link</button></div>}
           <div className="flex max-h-[26rem] min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1">
             {messages.length === 0 && (
               <p className="m-auto max-w-xs text-center text-slate-400">

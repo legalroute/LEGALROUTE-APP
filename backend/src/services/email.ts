@@ -12,6 +12,7 @@ export async function sendEmail(message: { to: string; subject: string; text: st
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
+      signal: AbortSignal.timeout(10000),
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from, to: [message.to], subject: message.subject, text: message.text }),
     });

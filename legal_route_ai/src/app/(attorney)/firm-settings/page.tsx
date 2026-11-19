@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CreditCard, ExternalLink, Mic } from "lucide-react";
+import { ExternalLink, Mic } from "lucide-react";
 import { Card, PageHeader, buttonClass } from "@/components/ui";
 import { appOrigin, requireUser } from "@/lib/auth";
+import { PaymentPanel } from "./billing/payment-panel";
 import { AppearanceForm, ClientExperienceForm, FirmProfileForm, IntakeLinkForm, NotificationsForm } from "./forms";
 
 export const metadata: Metadata = { title: "Settings — LegalRoute" };
@@ -42,7 +43,7 @@ export default async function FirmSettingsPage({ searchParams }: PageProps<"/fir
         ))}
       </nav>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      {tab === "billing" ? <PaymentPanel user={user} /> : <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <Card className="p-6">
           {tab === "profile" && (
             <>
@@ -63,16 +64,6 @@ export default async function FirmSettingsPage({ searchParams }: PageProps<"/fir
               <Link href="/calendar" className={buttonClass.secondary}>
                 Manage calendars
               </Link>
-            </div>
-          )}
-          {tab === "billing" && (
-            <div className="flex flex-col items-center gap-3 py-8 text-center">
-              <span className="grid size-12 place-items-center rounded-full bg-slate-100 text-slate-500">
-                <CreditCard className="size-6" aria-hidden />
-              </span>
-              <h2 className="text-lg font-semibold">Stripe payments</h2>
-              <p className="max-w-md text-sm text-slate-500">Create client payment requests with Stripe test Checkout and verified payment status.</p>
-              <Link href="/payments" className={buttonClass.secondary}>Manage payments</Link>
             </div>
           )}
           {tab === "appearance" && (
@@ -118,7 +109,7 @@ export default async function FirmSettingsPage({ searchParams }: PageProps<"/fir
             </Link>
           </Card>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

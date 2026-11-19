@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import { db, intakeResponses, intakeSessions, lawFirms, voiceConversations, voiceMessages } from "@/db";
 import { DeepgramError, transcribe } from "@/lib/deepgram";
 import { sendEmail } from "@/lib/email";
@@ -8,6 +8,7 @@ import { LlmError, type ChatTurn } from "@/lib/llm/types";
 import { getSettings } from "@/lib/settings";
 import { answeredPercent, templateIntakeTurn } from "@/lib/template-intake";
 import type { TurnEvent, VoiceErrorResponse } from "@/lib/voice-types";
+import { intakeAccessService, IntakeAccessError } from "@legalroute/backend/services/intake-access";
 import { saveAudio, toDto, trySynthesize } from "../../../voice/shared";
 
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
@@ -28,15 +29,10 @@ export async function POST(request: Request, ctx: RouteContext<"/api/intake/[slu
   }
   if (audio.size > MAX_AUDIO_BYTES) return fail(413, "That recording is too long. Please keep messages shorter.");
 
-  const [row] = await db
-    .select({ session: intakeSessions, conversation: voiceConversations, firm: lawFirms })
-    .from(intakeSessions)
-    .innerJoin(voiceConversations, eq(voiceConversations.id, intakeSessions.voiceConversationId))
-    .innerJoin(lawFirms, eq(lawFirms.id, intakeSessions.lawFirmId))
-    .where(and(eq(intakeSessions.voiceConversationId, conversationId), eq(lawFirms.slug, slug)))
-    .catch(() => []);
-  if (!row?.session.config) return fail(404, "Conversation not found. Start a new intake.");
-  const { session, conversation, firm } = row;
+  let authorized;
+  try { authorized = await intakeAccessService.authorize(slug, request.headers.get("authorization")?.replace(/^Bearer /i, "") || "", conversationId); }
+  catch (error) { if (error instanceof IntakeAccessError) return fail(403, error.message); throw error; }
+  const { session, conversation, firm } = authorized;
   const config = session.config!;
   if (conversation.completedAt) return fail(409, "This intake is already complete.");
 

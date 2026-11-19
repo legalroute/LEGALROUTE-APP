@@ -10,6 +10,7 @@ import { formatDateTime, initials } from "@/lib/format";
 import { INTAKE_TOPICS } from "@/lib/intake";
 import { questionCount } from "@/lib/intake-config";
 import { acceptIntake, declineIntake, markReviewed } from "../actions";
+import { IntakeLinkForm } from "./intake-link-form";
 import { RequestInfoForm } from "./request-info-form";
 
 export const metadata: Metadata = { title: "Intake — LegalRoute" };
@@ -140,6 +141,7 @@ export default async function IntakeDetailPage({ params }: PageProps<"/intakes/[
         </div>
 
         <div className="flex flex-col gap-4">
+          {session.status === "in_progress" && session.config && ["attorney", "admin"].includes(user.role) && <Card className="p-5"><IntakeLinkForm id={session.id} /></Card>}
           <Card className="p-5">
             <h2 className="mb-1 font-semibold">Next steps</h2>
             <p className="mb-4 text-sm text-slate-500">

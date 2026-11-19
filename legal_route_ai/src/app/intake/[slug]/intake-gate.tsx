@@ -4,16 +4,18 @@ import { useState } from "react";
 import { VoiceIntake } from "@/app/voice/voice-intake";
 import { ASSISTANT_NAME } from "@/lib/assistant";
 
-// Optionally asks for name and email (a firm setting) before the voice conversation starts.
+// Collects optional contact details and opt-in email delivery before a new recording starts.
 export function IntakeGate({
   slug,
   templateId,
   collectEmail,
+  sessionToken,
   ...voice
 }: {
   slug: string;
   templateId?: string;
   collectEmail: boolean;
+  sessionToken?: string;
   silenceMs: number;
   allowInterrupt: boolean;
   showProgress: boolean;
@@ -21,7 +23,8 @@ export function IntakeGate({
   completeDetail: string;
   reviewerName: string;
 }) {
-  const [details, setDetails] = useState<{ name: string; email: string } | null>(collectEmail ? null : { name: "", email: "" });
+  const [detailsError, setDetailsError] = useState<string>();
+  const [details, setDetails] = useState<{ name: string; email: string; emailResume: boolean } | null>(sessionToken ? { name: "", email: "", emailResume: false } : null);
 
   if (!details) {
     return (
@@ -30,7 +33,9 @@ export function IntakeGate({
         onSubmit={(e) => {
           e.preventDefault();
           const fd = new FormData(e.currentTarget);
-          setDetails({ name: String(fd.get("name") ?? "").trim(), email: String(fd.get("email") ?? "").trim() });
+          if (fd.get("emailResume") === "on" && !String(fd.get("email") || "").trim()) { setDetailsError("Enter your email address to receive the link, or uncheck email delivery."); return; }
+          setDetailsError(undefined);
+          setDetails({ name: String(fd.get("name") ?? "").trim(), email: String(fd.get("email") ?? "").trim(), emailResume: fd.get("emailResume") === "on" });
         }}
       >
         <h1 className="font-serif text-2xl font-semibold">Before we begin</h1>
@@ -41,8 +46,10 @@ export function IntakeGate({
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700">
           Email
-          <input name="email" type="email" required autoComplete="email" className="rounded-xl border border-slate-300 px-3 py-2.5 font-normal outline-none focus:border-orange-500" />
+          <input name="email" type="email" required={collectEmail} autoComplete="email" className="rounded-xl border border-slate-300 px-3 py-2.5 font-normal outline-none focus:border-orange-500" />
         </label>
+        <label className="flex items-start gap-2 text-sm text-slate-600"><input type="checkbox" name="emailResume" className="mt-1" />Email me my private intake link when I begin recording. An email address is needed if selected.</label>
+        {detailsError && <p role="alert" className="text-sm text-red-700">{detailsError}</p>}
         <button type="submit" className="rounded-xl bg-orange-600 px-4 py-3 font-semibold text-white hover:bg-orange-700">
           Continue
         </button>
@@ -51,6 +58,8 @@ export function IntakeGate({
   }
 
   const startBody: Record<string, string> = {};
+  if (sessionToken) startBody.sessionToken = sessionToken;
+  if (details.emailResume) startBody.emailResume = "true";
   if (templateId) startBody.templateId = templateId;
   if (details.name) startBody.name = details.name;
   if (details.email) startBody.email = details.email;
@@ -62,6 +71,7 @@ export function IntakeGate({
       startUrl={`/api/intake/${slug}/start`}
       turnUrl={`/api/intake/${slug}/turn`}
       startBody={startBody}
+      newIntakeUrl={sessionToken ? `/intake/${slug}` : undefined}
     />
   );
 }

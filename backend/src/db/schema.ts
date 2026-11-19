@@ -535,3 +535,13 @@ export const paymentEvents = pgTable("payment_events", {
   type: text("type").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Hash-only bearer credentials for individual public intake sessions.
+export const intakeAccess = pgTable("intake_access", {
+  sessionId: uuid("session_id").primaryKey(),
+  lawFirmId: uuid("law_firm_id").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [foreignKey({ columns: [t.sessionId, t.lawFirmId], foreignColumns: [intakeSessions.id, intakeSessions.lawFirmId] }).onDelete("cascade")]);

@@ -125,7 +125,7 @@ test("PostgreSQL: migrations, magic-link/session lifecycle, and simultaneous sch
       const documentTestDir = await mkdtemp(path.join(tmpdir(), "legalroute-document-test-"));
       const server = spawn(process.execPath, [fileURLToPath(new URL("../../node_modules/next/dist/bin/next", import.meta.url)), dev ? "dev" : "start", "--hostname", "127.0.0.1", "--port", String(port)], {
         cwd: fileURLToPath(new URL("../../legal_route_ai/", import.meta.url)),
-        env: { ...process.env, NODE_ENV: dev ? "development" : "production", NEXT_TELEMETRY_DISABLED: "1", DOCUMENT_UPLOADS_DIR: documentTestDir, STRIPE_SECRET_KEY: "sk_test_http_fixture", STRIPE_WEBHOOK_SECRET: "whsec_http_fixture" },
+        env: { ...process.env, NODE_ENV: dev ? "development" : "production", NEXT_TELEMETRY_DISABLED: "1", DOCUMENT_UPLOADS_DIR: documentTestDir, STRIPE_SECRET_KEY: "sk_test_http_fixture", STRIPE_WEBHOOK_SECRET: "whsec_http_fixture", DEEPGRAM_API_KEY: "", RESEND_API_KEY: "", EMAIL_FROM: "", OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "" },
         stdio: ["ignore", "pipe", "pipe"],
       });
       let logs = "";
@@ -152,7 +152,43 @@ test("PostgreSQL: migrations, magic-link/session lifecycle, and simultaneous sch
         const connectionsPage = await fetch(`${base}/connections`, { headers: { cookie: `lr_session=${session.token}` } });
         assert.equal(connectionsPage.status, 200);
         assert.ok((await connectionsPage.text()).includes("Add a table"), "Connections page should show the connected account builder");
-        const paymentsPage = await fetch(`${base}/payments`, { headers: { cookie: `lr_session=${session.token}` } });
+        // Private intake links are exercised without calling email, speech or AI providers.
+        await data.db.update(data.intakeTemplates).set({ publishedConfig: generatedIntake, publishedAt: new Date() }).where(eq(data.intakeTemplates.id, importedTemplateId));
+        const startIntakeUrl = `${base}/api/intake/${actor.firm.slug}/start`;
+        const startedIntake = await fetch(startIntakeUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ consent: true, templateId: importedTemplateId, name: "Private Session Client", email: "client@example.test", emailResume: "true" }) });
+        assert.equal(startedIntake.status, 200, logs);
+        assert.equal(startedIntake.headers.get("cache-control"), "no-store");
+        const startedPayload = await startedIntake.json() as { conversationId: string; accessToken: string; resumeUrl: string; warning?: string };
+        assert.match(startedPayload.accessToken, /^[A-Za-z0-9_-]{43}$/);
+        assert.ok(startedPayload.resumeUrl.endsWith(`#${startedPayload.accessToken}`));
+        assert.ok(startedPayload.warning?.includes("Email delivery is not configured"));
+        assert.ok(!logs.includes(startedPayload.accessToken), "Resume secrets must not be written to console logs");
+        const privatePage = await fetch(`${base}/intake/${actor.firm.slug}/resume`);
+        assert.equal(privatePage.status, 200);
+        assert.ok(!(await privatePage.text()).includes("Private Session Client"));
+        const resumedIntake = await fetch(startIntakeUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ consent: true, sessionToken: startedPayload.accessToken }) });
+        assert.equal(resumedIntake.status, 200, logs);
+        const resumedPayload = await resumedIntake.json() as { conversationId: string; messages: unknown[] };
+        assert.equal(resumedPayload.conversationId, startedPayload.conversationId);
+        assert.ok(resumedPayload.messages.length >= 2);
+        const audioBody = () => { const form = new FormData(); form.set("conversationId", startedPayload.conversationId); form.set("audio", new File(["fake audio"], "message.webm")); return form; };
+        const missingToken = await fetch(`${base}/api/intake/${actor.firm.slug}/turn`, { method: "POST", body: audioBody() });
+        assert.equal(missingToken.status, 403);
+        const legacyBypass = await fetch(`${base}/api/voice/turn`, { method: "POST", body: audioBody() });
+        assert.equal(legacyBypass.status, 403);
+        const { intakeAccessService } = await import("../src/services/intake-access.ts");
+        const [privateIntake] = await data.db.select().from(data.intakeSessions).where(eq(data.intakeSessions.voiceConversationId, startedPayload.conversationId));
+        const replacement = await intakeAccessService.manage(actor, privateIntake.id, "rotate");
+        assert.ok(replacement);
+        const replacedLink = await fetch(startIntakeUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ consent: true, sessionToken: startedPayload.accessToken }) });
+        assert.equal(replacedLink.status, 403);
+        await intakeAccessService.manage(actor, privateIntake.id, "revoke");
+        const revokedLink = await fetch(startIntakeUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ consent: true, sessionToken: replacement.token }) });
+        assert.equal(revokedLink.status, 403);
+        const oldPayments = await fetch(`${base}/payments`, { headers: { cookie: `lr_session=${session.token}` }, redirect: "manual" });
+        assert.equal(oldPayments.status, 307);
+        assert.match(oldPayments.headers.get("location") ?? "", /\/firm-settings\?tab=billing$/);
+        const paymentsPage = await fetch(`${base}/firm-settings?tab=billing`, { headers: { cookie: `lr_session=${session.token}` } });
         assert.equal(paymentsPage.status, 200, logs);
         assert.ok((await paymentsPage.text()).includes("Create test payment request"));
         const returnPage = await fetch(`${base}/payment-result?result=returned`);

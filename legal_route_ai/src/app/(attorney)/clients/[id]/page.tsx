@@ -12,7 +12,7 @@ import { addTask, deleteDocument, deleteTask, requestDocument, toggleTask } from
 import { ClientChat } from "./client-chat";
 import { OverviewForm } from "./overview-form";
 import { DocumentUploadButton } from "./document-upload-button";
-import { PaymentPanel } from "../../payments/payment-panel";
+import { PaymentPanel } from "../../firm-settings/billing/payment-panel";
 import { UploadForm } from "./upload-form";
 
 export const metadata: Metadata = { title: "Client — LegalRoute" };

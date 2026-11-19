@@ -162,6 +162,11 @@
       "types": "./src/services/payments/service.ts",
       "development": "./src/services/payments/service.ts",
       "default": "./dist/services/payments/service.js"
+    },
+    "./services/intake-access": {
+      "types": "./src/services/intake-access.ts",
+      "development": "./src/services/intake-access.ts",
+      "default": "./dist/services/intake-access.js"
     }
   }
 }

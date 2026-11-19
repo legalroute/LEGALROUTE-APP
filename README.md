@@ -107,4 +107,8 @@ Run migration `0008_conflict_checks`, then open **Conflict Checks** to map a Goo
 
 ### Payments and stored documents
 
-**Payments** and each client's **Payments** tab support one-time Stripe test Checkout requests with signed-webhook status updates. In client **Documents**, use **Stored documents → Upload document** to store files up to 20 MB. See [local Stripe setup, document storage and Azure deployment notes](docs/payments/README.md).
+**Settings → Billing** and each client's **Payments** tab support one-time Stripe test Checkout requests with signed-webhook status updates. In client **Documents**, use **Stored documents → Upload document** to store files up to 20 MB. See [local Stripe setup, document storage and Azure deployment notes](docs/payments/README.md).
+
+### Private intake resume links
+
+Starting a firm intake generates a private, seven-day link for that session. Clients can copy it or opt into email delivery, then resume saved answers and transcript on another device. Attorneys/admins can replace or revoke links from an in-progress intake. See [setup and behavior](docs/private-intake-links/README.md).
